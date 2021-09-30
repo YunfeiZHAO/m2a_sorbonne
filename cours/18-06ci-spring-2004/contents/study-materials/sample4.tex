@@ -1,0 +1,49 @@
+\documentclass[11pt]{amsart}
+\usepackage{amssymb,amsmath}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\begin{document}
+
+
+\begin{theorem} 
+The field $\C$ is a vector space over $\R$
+\end{theorem}
+
+
+
+\begin{theorem}
+A linear map is injective if and only if its kernel is zero.
+\end{theorem}
+
+\begin{proof} 
+The proof uses Lemma \ref{nolemma}
+\end{proof}
+
+
+\begin{lemma} \label{nolemma}
+Cannot think of one for such a trivial theorem. 
+\end{lemma}
+
+
+\end{document}
+
+This sample contains a new environment: theorem. You can use 
+it in the text, putting your text between \begin{theorem} 
+and \end{theorem}. LaTeX counts theorems for you. 
+
+Note that it is convenient to use packages provided by the 
+American Mathematical Society to produce nice math symbols. 
+The packages are available in Athena. 
+
+You can define ``macros'' for frequently used commands, as {\mathbb R} 
+above. The { } brackets are used to separate the field with the 
+name and the contents of the new command.  
+
+This example also uses cross references. You can put \label inside 
+any environment and \ref whenever you want to refer to it. This 
+will produce the number of the environment. So you don't have 
+to keep track of the counting of your theorems etc. 
