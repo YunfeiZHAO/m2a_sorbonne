@@ -1,0 +1,67 @@
+\documentclass[11pt]{amsart}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand{\ud}{\mathrm{d}}
+\renewcommand{\labelenumi}{(\alph{enumi})}
+
+\begin{document}
+
+\title{18.099/18.06CI - Homework 1}
+\author{Juha Valkama}
+\date{February 17, 2004}
+\maketitle
+
+\section*{Problem 1.}
+The field $\field{Q}$ is a linear space over $\field{Q}$, but not over
+$\field{R}$. In order to prove the latter statement by contradiction,
+suppose that $\field{Q}$ is a linear space over $\field{R}$. For
+$v\not=0,v \in \field{Q},\, f, g \in \field{R}, fv=gv \Rightarrow f=g$
+and $fv \not = gv \Rightarrow f \not = g.$ This then would give a
+one-to-one map from $\field{R}$ to $\field{Q}$ defined as $f \mapsto
+fv$.  However, since the cardinality of $\field{R}$ is greater than
+the cardinality of $\field{Q}$, there cannot be a one-to-one map from
+$\field{R}$ to $\field{Q}$. Thus, by contradiction, $\field{Q}$ is not
+a linear space over $\field{R}$. Conversely, one-to-one map from
+$\field{Q}$ to $\field{R}$ can be defined as $q \mapsto qr, q \in
+\field{Q}, r \in \field{R}$. Hence, by restricting the coefficients
+from $\field{R}$ to $\field{Q}$, any linear space over $\field{R}$
+becomes a linear space over $\field{Q}$.
+
+\section*{Problem 2.}
+\begin{enumerate}
+\item Yes, sequences with only finitely many nonzero elements are a
+  subspace of A. Let $S$ be all the infinite sequences over
+  $\field{R}$ with finitely many non-zero terms and let $a,b \in S, \
+  k \in \field{R}$. It is clear that $a+kb \in S$ since the number of
+  non-zero terms will still be finite. 
+
+\item No, sequences with only finitely many zero terms are not a
+  subspace of A. Let $S$ be all the infinite sequences over
+  $\field{R}$ with only finitely many zero terms and let $a \in
+  S$. Since $0 \cdot a=0\not \in S$, $S$ is not a linear space.
+  
+\item Yes, Cauchy sequences are a subspace of A. Let $S$ be the set of
+  all Cauchy sequences and $a,b \in S$. Suppose $\varepsilon_{ab}$ is
+  given and choose $\varepsilon_{a},\varepsilon_{b} >0$ such that
+  $\varepsilon_{ab} = \varepsilon_a + \varepsilon_b.$ Find $N_a,N_b\in
+  \field{R}$ such that $|a_n - a_m| < \varepsilon_a \textrm{ for all }
+  m,n > N_a\textrm{ (similarily for b)}$. We need to locate $N_{ab}$
+  such that $|(a_n + b_n) - (a_m + b_m)| < \varepsilon_{ab}$ for all
+  $m,n > N_{ab}$. From triangle inequality $|A+B| \leq |A| + |B|$.
+  Hence, for $N_{ab} = max(N_a, N_b), |(a_n-a_m) + (b_n-b_m)| \leq
+  \varepsilon_a + \varepsilon_b = \varepsilon_{ab}.$
+
+\item Yes, the sequences, for which the sum of the squares of the
+  elements converges, is a subspace of A. Let $S$ be the set of all the
+  infinite sequences $ \{a_i\}_{i=1}^{\infty}, a_i \in \field{R}$ for
+  which $\sum_{i=1}^\infty a_i^2$ converges.  Then for $a,b \in S,\
+  a+b \in S: \ \sum (a_i + b_i)^2 = \sum a_i^2 + \sum b_i^2 + 2 \sum
+  a_ib_i$. By Cauchy-Schwarz $(\sum x_i^2)\cdot(\sum y_i^2) \geq (\sum
+  a_ib_i)^2$. Also, for $k \in \field{R}, ka \in S: \sum (ka_i)^2 =
+  k^2 \cdot \sum a_i^2$. Therefore, $S$ is a linear space.
+
+\end{enumerate}
+\end{document}
+
