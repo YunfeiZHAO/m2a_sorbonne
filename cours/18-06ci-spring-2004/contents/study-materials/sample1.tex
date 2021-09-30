@@ -1,0 +1,19 @@
+\documentclass[11pt]{article}
+
+\begin{document}
+
+Your text here.
+%your comment here. 
+
+\end{document}
+
+Note:  anything you write after \end{document} doesn't matter.
+Between \begin{document} and \end{document} you may 
+insert comments starting each line with a % symbol. 
+
+{article} and its version {amsart} will be the only two 
+document classes you will need in this course. {amsart} is a more 
+elaborate class designed by the American Mathematical Society 
+especially to make math writings easier.  
+
+Try to change [11pt] to [12pt] or [10pt].   

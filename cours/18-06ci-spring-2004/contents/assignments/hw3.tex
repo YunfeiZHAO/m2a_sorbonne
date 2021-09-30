@@ -1,0 +1,207 @@
+\documentclass[11pt]{amsart}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand{\ud}{\mathrm{d}}
+\renewcommand{\labelenumi}{(\alph{enumi})}
+
+\begin{document}
+
+\title{18.099/18.06CI - Homework 3}
+\author{Juha Valkama}
+\date{March 8, 2004}
+\maketitle
+
+\section*{Problem 1.}
+Let $L$ and $M$ be finite dimensional linear spaces and let
+$f:L\mapsto M$ be a linear map. We want to show that ${\rm Im} f$ and
+$\ker f$ are finite dimensional and that $\textrm{dim Im }f+\dim
+{\ker}f = \dim L$. We assume that $\dim L = n$. Let $\{b_j\}$ be a
+basis for kernel of $f$.  By the Basis Extension Theorem we know that
+there are linearly independent vectors $\{c_k\}$ such that the ordered
+set $\{a_i\}=\{b_j,c_k\}$ forms a basis for $L$.  Since the total
+number of basis elements for $L$ is finite, it must be that $\ker f
+\subseteq L$ is also finite dimensional. Thus, $\dim \ker f = l \leq
+n$.
+
+Next we show that $\{f(a_i)\}_{i=l+1}^n$ span ${\rm Im} f$. We choose
+$v \in {\rm Im} f$. Since $\{a_i\}$ spans $L$, there exist scalars
+$d_i$ such that $v=f\left(\sum_{i=1}^n d_ia_i\right)$.  Noting that
+$f(a_i)=0, \ 1\leq i \leq l$, we have $v=\sum_{i=l+1}^n c_if(a_i)$.
+Thus, $\{f(a_i)\}_{i=l+1}^n$ spans ${\rm Im}f$.
+
+To verify the linear independence of $\{f(a_i)\}_{i=l+1}^n$ we
+consider the linear combination $\sum_{i=l+1}^n c_if(a_i)=0$. Then by
+linearity $f\left(\sum_{i=l+1}^n c_ia_i\right)=0$. Since ${a_i}$ are
+linearly independent it must be that all $c_i=0$.  Hence all
+$\{f(a_i)\}_{i=l+1}^n$ are linearly independent and we can consider
+them a basis for ${\rm Im}f$. This also confirms that ${\rm Im}f$ is
+finite dimensional.
+
+Hence, $\dim {\rm Im}f+\dim {\ker}f = \dim L$.
+
+\section*{Problem 2.}
+\begin{enumerate}
+\item{ $\{f \in {\mathcal L}(V,V) \; | \;\; \dim {\rm Im}f =0\}$} 
+  
+  This is a subspace. The defining condition of this subset is
+  equivalent to $f=0$. Thus for all $v\in V$, $f(v)=0$.  By linearity,
+  this is also true for any combination of such linear maps.
+  
+  Considering the matrix representation of this subspace of linear
+  maps, we conclude that it is isomorphic to the subspace of zero
+  matrices.
+
+\item{ $\{f \in {\mathcal L}(V,V) \; | \;\; \dim {\ker}f =0\}$ } 
+  
+  This is not a subspace, unless $\dim V=0$. We prove this by
+  contradiction.  Suppose $v\in V.$ Then necessarily for $f$ in the
+  subset, $f(v) \neq 0$.  Further, by linearity it must be that $kf(v)
+  \neq 0, k\in \field{F}$. We pick $k=0$ and then for any vector $v
+  \in V$, the action of $kf$ on $v$ gives $0$, independent of v. Thus
+  $\dim \ker kf \neq 0$.  However, if $\dim V=0$ then also $\dim \ker
+  f=0$. In this case $V\subseteq \{0\}$ and necessarily $f=0$.
+ 
+  Formulated in terms of matrices, we can consider this subset of
+  linear transforms isomorphic with the set of matrices with rank
+  equal to the dimension of $V$. This is not a subspace since
+  multiplication of any such matrix by $0$ will result in a matrix
+  that has rank less than the dimension of $V$ unless the dimension of
+  $V$ is $0$.
+%\newpage
+\item{ $\{f \in {\mathcal L}(V,V) \; | \;\; \dim {\rm Im}f < \dim
+    V\}.$} 
+  
+  This is not a subspace, unless $\dim V=1$. We prove this by
+  contradiction.  Let $\dim V \geq 2$ and let $\{a_i\}_{i=1}^n$ be a
+  basis for V.  Further, let $f_i(a_j)=a_j, \textrm{ for } i=j
+  \textrm{ and } f_i(a_j)=0, \textrm{ for } i \neq j$. Then for
+  $v=\sum_{i=1}^n c_i a_i$, $f_i(v)=c_ia_i$. Thus, $\dim {\rm Im}f_i =
+  1 < \dim V$.  However, $\left(\sum_{i=1}^n f_i\right)v=v$ and $\dim
+  {\rm Im} \left(\sum_{i=1}^n f_i\right)=n=\dim V$. For $\dim V=1$ it
+  must be that $f=0, \dim {\rm Im}f=0$ and proof follows as in part
+  (a). We cannot have $\dim V=0$, since then $\dim {\rm Im}f = \dim V$.
+  
+  We can consider this subset of linear transforms isomorphic to the
+  set of matrices with rank less than the dimension of $V$. For $\dim
+  V>1$ we consider a subset of such linearly independent matrices of
+  rank 1 and note that the sum of these matrices may result in a
+  matrix of rank $\dim V$. In case $\dim V=1$ our subset is a subspace
+  of zero matrices as described in part (a).
+\end{enumerate}
+\section*{Problem 3.}
+\begin{enumerate}
+\item We want to prove that there are no finite square matrices such
+  that $XY-YX=I$. By contradiction, suppose we could find such $X$ and
+  $Y$. Let $X,Y,I\in\field{F}^{m\times m}$. Then $\textrm{trace }
+  (XY-YX) = \textrm{trace } I = m$. However,
+\begin{align*}
+  \textrm{trace } (XY-YX) &= \sum_{i=1}^m (XY-YX)_{ii} \\
+  &=\sum_{i=1}^m \left(\sum_{k=1}^{m}(X)_{ik}(Y)_{ki}-
+    \sum_{k=1}^{m}(Y)_{ik}(X)_{ki}\right)\\
+  &={\sum_{i=1}^m\sum_{k=1}^{m}(X)_{ik}(Y)_{ki}-
+    \sum_{i=1}^m\sum_{k=1}^{m}(Y)_{ik}(X)_{ki}}\\
+  &= 0 \not = m
+\end{align*}
+Thus, it is impossible to find finite square matrices that satisfy
+$XY-YX=I$.\\[1ex]
+
+\item $\textrm{Let } P=\sum_{k=0}^{n}c_k x^k.$ Then
+  $$\frac{\ud}{\ud x} P=\sum_{k=0}^{n}k c_k x^{k-1} \ \textrm{
+    and } \ x P=\sum_{k=0}^{n}c_k x^{k+1}.$$
+
+Both of these maps are linear:
+\begin{align*}
+  \frac{\ud}{\ud x}(aP + P')&=\frac{\ud}{\ud
+    x}(a\sum_{k=0}^{n}c_k x^k + \sum_{k=0}^{n}c'_k x^k)\\
+  &={a\frac{\ud}{\ud x}\sum_{k=0}^{n}c_k x^k +
+    \frac{\ud}{\ud x} \sum_{k=0}^{n}c'_k x^k}\\
+  &=a\frac{\ud}{\ud x}P+\frac{\ud}{\ud x}P'\\[2ex]
+  x(aP + P')&=x(a\sum_{k=0}^{n}c_k x^k + \sum_{k=0}^{n}c'_k x^k)\\
+  &=ax\sum_{k=0}^{n}c_k x^k +x\sum_{k=0}^{n}c'_k x^k\\
+  &=axP+xP'
+\end{align*}
+
+We calculate the compositions of these two maps:
+\begin{alignat*}{6} \left(\frac{\ud}{\ud x} \circ x \right) P
+  &= &\frac{\ud}{\ud x}\left(xP\right)&=\frac{\ud}{\ud
+    x}\sum_{k=0}^{n}c_k
+  x^{k+1}&&=\sum_{k=0}^{n}(k+1)c_k x^{k} \quad\\[0.5ex]
+  \left(x \circ \frac{\ud}{\ud x}\right) P &=& \ x\left(\frac{\ud}{\ud
+      x}P\right)&=x\sum_{k=0}^{n}k c_k
+  x^{k-1}&&=\sum_{k=0}^{n}k c_k x^{k}.
+\end{alignat*}
+ Thus by linearity
+ \begin{align*}
+   \left(\frac{\ud}{\ud x} \circ x - x \circ \frac{\ud}{\ud
+       x}\right)P&=\sum_{k=0}^{n}(k+1)c_k x^{k} - \sum_{k=0}^{n}k c_k x^{k}\\
+   &=\sum_{k=0}^{n}c_k x^{k}=I\,P = P
+\end{align*}
+
+\item We introduce the concept of matrices with infinitely many rows
+  and columns. To define multiplication of two such matrices, we
+  restrict our attention to matrices with finitely many non-zero
+  elements on any given row or column. Then for any given row
+  $\{a_{ij}\}_{j=1}^\infty$ there exists a number $N_i$ such that
+  $a_{ij}=0,\textrm{for } j>N_i$. Similarily for any given column
+  $\{a_{ij}\}_{i=1}^\infty$ there exists a number $M_j$ such that
+  $a_{ij}=0,\textrm{for } i>M_j$. Multiplication of two infinite
+  matrices $A$ and $B$ is then defined as $$(AB)_{ij} =
+  \sum_{k=1}^{\textrm{min}(A_{N_i}, B_{M_j})} (A)_{ik}(B)_{kj}$$
+  
+  In order to construct the matrix representations of linear
+  transforms $x$ and $\frac{\ud}{\ud x}$ we consider their actions on
+  the standard basis element $x^k$. For $k \geq 0$, $x(x^k)=x^{k+1}$.
+  Similarily for $k>0,\ \frac{\ud}{\ud x}(x^k)=kx^{k-1}, \ k=0, \ 
+  \frac{\ud}{\ud x}(x^0)=0$. Hence,
+
+$$
+\begin{array}{rr}
+X=A_{\frac{\ud}{\ud x}}= \left( \begin{array}{ccccc}
+            0 & 1 & 0 & 0 & \ldots \\
+            0 & 0 & 2 & 0 & \ldots   \\
+            0 & 0 & 0 & 3 & \\
+            \vdots & \vdots & \vdots & & \ddots
+            \end{array} \right)&
+
+Y=A_x = \left( \begin{array}{cccc}
+            0 & 0 & 0 & \ldots \\
+            1 & 0 & 0 & \ldots   \\
+            0 & 1 & 0 & \ldots \\
+            0 & 0 & 1 &  \\
+            \vdots & \vdots & & \ddots
+            \end{array} \right) 
+\end{array}$$\\
+By matrix multiplication:
+
+$$
+\begin{array}{cc}
+XY = \left( \begin{array}{cccc}
+            1 & 0 & 0 & \ldots \\
+            0 & 2 & 0 & \ldots   \\
+            0 & 0 & 3 &  \\
+            \vdots & \vdots & & \ddots
+            \end{array} \right) & 
+YX = \left( \begin{array}{cccc}
+            0 & 0 & 0 & \ldots \\
+            0 & 1 & 0 & \ldots   \\
+            0 & 0 & 2 &  \\
+            \vdots & \vdots & & \ddots 
+            \end{array} \right)
+\end{array}$$\\
+
+Thus:
+$$
+XY-YX = \left( \begin{array}{cccc}
+            1 & 0 & 0 & \ldots \\
+            0 & 1 & 0 & \ldots   \\
+            0 & 0 & 1 &  \\
+            \vdots & \vdots & & \ddots
+            \end{array} \right) = I.
+$$
+          
+Hence, $X$ and $Y$ as defined above are a solution to
+$XY-YX=I$.
+\end{enumerate}
+\end{document}

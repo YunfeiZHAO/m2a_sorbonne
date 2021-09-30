@@ -1,0 +1,96 @@
+\documentclass[11pt]{amsart}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand{\ud}{\mathrm{d}}
+\renewcommand{\labelenumi}{(\alph{enumi})}
+\newcommand{\coker}{\textrm{coker}\,}
+\newcommand{\rank}{\textrm{rank}\,}
+\newcommand{\nullity}{\textrm{null}\,}
+\newcommand{\Image}{\textrm{Im}\,}
+\newcommand{\ind}{\textrm{ind}\,}
+
+\begin{document}
+
+\title{18.099/18.06CI - Homework 4}
+\author{Juha Valkama}
+\date{March 15, 2004}
+\maketitle
+
+\section*{Problem 1.}
+\begin{enumerate}
+\item Given a finite dimensional linear space $L$ and a subspace $L_1
+  \subset L$ we want to prove that there exists a subspace $L_2
+  \subset L$ such that $L_1\oplus L_2 =L$. Furthermore, we want to prove
+  that the dimensions of all such direct complements to $L_1$ coincide.
+  
+  Let $\dim L=l$. We pick a basis $\{e_i\}_{i=1}^{l_1}$ for $L_1$ and
+  note that $\dim L_1=l_1$. We then use the basis extension theorem
+  and extend the basis of $L_1$ to the basis of $L$. Thus,
+  $\{e_1,\ldots,e_{l_1},e_{l_1+1}\ldots,e_l\}$ spans $L$. Let
+  $L_2=\textrm{ span } \{e_i\}_{i=l_1+1}^l$. Since, $L_1 \cap L_2=0$
+  and $L_1 + L_2 = L$ we note that $L_2$ is a direct complement to
+  $L_1$. Furthermore, $\dim L_2=l-l_1$.
+  
+  Let $L'_2$ be a direct complement to $L_1$ and
+  $\{e'_{i}\}_{i=1}^{l'_2}$ be a basis for $L'_2$. We extend the basis
+  of $L'_2$ to $L$ by using the basis vectors of $L_1$. Thus,
+  $\{e'_1,\ldots,e'_{l'_2}, e_{1}, \ldots,e_{l_1}\}$ spans $L$. Hence,
+  it must be that $\dim L'_2=l-l_1$.  However, this is the same as
+  $\dim L_2$. Thus, dimensions of all direct complements of $L_1$ coincide.
+\vspace{\stretch{1}}
+\item Given $F: L \mapsto M$, we first show that $\ind F = \dim(\coker
+  F)-\dim(\ker F)$ is well defined. We note that since part (a) defined
+  direct complement only for finite dimensional spaces we
+  restrict our attention to a finite dimensional $M$.
+  
+  Using the result from part (a) we find that $\coker F$, a direct
+  complement to $\Image F \subset M$, always exists and has a finite
+  dimension. Furthermore, $\ker F$ also always exists and has a well
+  defined dimension. We can then take $\dim \coker F = c$ and $\dim
+  \ker F = k$.  Hence, $\ind F=c-k$. We note that $c$ is always a
+  non-negative integer and $k$ can be either a non-negative integer or
+  infinity depending on the dimension of $L$.  Thus, $\ind F$ is well
+  defined.
+  
+  For finite dimensional $M$ and $L$. Let $\dim M=m$ and $\dim \Image
+  F=i$. Then $\dim \coker F=m-i$.  Further, let $\dim L=l$. Then $\dim
+  \ker F = \dim L - \dim \Image F = l-i$. Thus, $\ind F = (m-i) -
+  (l-i) = m-l= \dim M - \dim L$ \vspace{\stretch{1}}
+\item If $\dim M=\dim L=n$. Then $\ind F=0$ and also $\dim \coker F =
+  \dim \ker F$. If $\ker F=0$ then also $\coker F=0$ and the system of
+  linear equations always has a solution, while the system with a zero
+  r.h.s has no nontrivial solution.
+
+\end{enumerate} 
+
+\section*{Problem 2.}
+We want to show that all triples of non-coplanar, pairwise distinct
+lines through zero in $\field{R}^3$ are identically arranged.  Let
+$\{e_1,e_2,e_3\}$ be a basis for $\field{R}^3$ and let $v_i =
+a_{1i}e_1 + a_{2i}e_2+ a_{3i}e_3$ for $i=1,2,3$ be direction
+vectors for three non-coplanar pairwise distinct lines in
+$\field{R}^3$.  Further, let $v'_i = a'_{1i}e_1 + a'_{2i}e_2+
+a'_{3i}e_3$ for $i=1,2,3$ be the direction vectors for a second set of
+non-coplanar pairwise distinct lines in $\field{R}^3$.  For $v_i$ and
+$v'_i$ to be identically arranged we must find a linear map $f$ such
+that $f(v_i)=v'_i$ for $i=1,2,3$. This is equivalent to finding a
+matrix $T$ such that $T(a_{ij})=(a'_{ij})$. Since the three lines are
+linearly independent we can invert the matrix of coefficients. Thus,
+$T=(a'_{ij})(a_{ij})^{-1}$ and three such lines are identically
+arranged.
+
+To consider the arrangements of four such lines we note that direction
+vectors for three such lines span $\field{R}^3$ and thus we express
+the direction vector for the fourth line as a linear combination of
+the first three. Namely, $v_4=b_1v_1+b_2v_2+b_3v_3$ and
+$v'_4=b'_1v'_1+b'_2v'_2+b'_3v'_3$.  Further,
+$T(v_4)=b_1T(v_1)+b_2T(v_2)+b_3T(v_3)$. Hence, if we add a scaling
+factor to the first three direction vectors
+$T(v_i)=\frac{b'_i}{b_i}v'_i$ for $i=1,2,3$ it follows that
+$T(v_4)=v'_4$ and thus all quadruples of such lines are identically
+arranged.
+
+\end{document}
+
