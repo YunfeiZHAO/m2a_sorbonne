@@ -1,0 +1,49 @@
+\documentclass[11pt]{amsart}
+\usepackage{amssymb,amsmath}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\begin{document}
+
+Here is a generally looking matrix: 
+
+$$ \left( \begin{array}{cccc} 
+            a_{11} & a_{12} & \ldots & a_{1n} \\
+            a_{21} & \ldots &        &        \\
+            \vdots &        &        &        \\
+            a_{m1} & \ldots &        & a_{mn}   
+                \end{array} \right) $$    
+
+If $X$ is a matrix with entries in $\C$, say  
+
+\begin{equation}  
+     X = \left( \begin{array}{cc} 
+                   \alpha &   \beta \\
+                    \gamma &  \delta    \end{array} \right). 
+\end{equation} 
+
+the complex conjugate transpose $X^*$ is easy to write: 
+
+\begin{equation}  
+     X^* = \left( \begin{array}{cc} 
+                   \bar{\alpha} &   \bar{\gamma} \\
+                    \bar{\beta} &  \bar{\delta}    \end{array} \right). 
+\end{equation} 
+
+
+Solve the following problem and write your solution in \LaTeX :
+
+Prove that the set of all $2 \times 2$ 
+complex matrices $X$ such that $X^* +X =0$ and ${\rm tr}(X)=0$, is a linear 
+space over $\R$.   
+
+Find the dimension and a basis of this space. 
+
+
+\end{document}
+
+Use the theorem and proof environments to state your result. 
+Use the title environment (see Sample 3) to sign and date your solution. 

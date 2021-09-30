@@ -1,0 +1,58 @@
+\documentclass[11pt]{amsart}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand{\ud}{\mathrm{d}}
+\renewcommand{\labelenumi}{(\alph{enumi})}
+
+\begin{document}
+
+\title{18.099/18.06CI - Homework 2}
+\author{Juha Valkama}
+\date{March 15, 2004}
+\maketitle
+
+\section*{Problem 1.}
+Let $S$ be the space of all homogeneous polynomials of degree $p$ in
+$n$ variables. Its elements can be expressed as sums of terms of form:
+$P_m=\prod_{i=1}^n \alpha_i^{k_i}, \sum_{i=1}^n k_i = p.$ In order to
+solve for the dimension of the space of all such polynomials we need
+to find the largest possible number of distinct terms. This can be
+reduced to finding the number of distinct non-negative integer valued
+solution vectors $\{k_i\}$ to $\sum_{i=1}^{n} k_i = p\,$ due to the
+uniqueness of factorization. From elementary combinatorics, the number
+of positive, $k_i > 0$, solution vectors is $\binom{p-1}{n-1}$. To
+obtain the number of non-negative solutions, $k_i \geq 0$, we note
+that the number of such solutions is the same as the number of
+positive solutions to $\sum_{i=1}^{n} k'_i=p+n$, where $k'_i=k_i+1$.
+Hence, we obtain $\binom{p+n-1}{n-1}$ distinct non-negative solution
+vectors.
+
+Considering the set $U$ of all such distinct non-zero monomial
+terms we find that they are linearly independent: $\sum c_m
+P_m=0,\ P_m \in U,\ P_i\neq P_j, \, i \neq j \, \Rightarrow
+\textrm{all } c_m = 0.$ Because $U$ is a maximal linearly
+independent set of elements from $S$ we can consider its elements
+as a basis for S. The dimension of S is simply the number of
+elements in its basis and hence dim $S=\binom{p+n-1}{n-1}$. We
+further note that $\binom{a}{b}>0$ for
+ $a\geq 0 , \ a \geq b$ and thus for the cases $p=0,n=1$;
+$p\leq n;p>n$ our formula works as expected.
+
+\section*{Problem 2.}
+Two finite dimensional linear spaces $L$ and $M$ are
+isomorphic if and only if for $l = \textrm{dim } L, m =
+\textrm{dim } M, \ l=m.$ To prove this let $\{u_i\}_{i=1}^{l}$ be
+a basis for L and $\{v_j\}_{j=1}^m$ be a basis for M. A linear map
+$f : L \mapsto M$ can be defined by $u_i \mapsto \sum_{j=1}^{m}
+a_{ij} v_j.$ We consider such a map as a system of linear
+equations, and assert from the properties of matrices that for
+such map to be invertible, that is for it to be a one-to-one and
+onto map, it is necessary and sufficient that the matrix of
+coefficients $(a_{ij})$ be invertible. This is only possible if
+$m=l$. Given $m=l$ we can choose $I_m$ as the coefficient matrix
+and note that it is its own inverse. Thus, $L$ and $M$ are
+isomorphic if and only if $\textrm{dim } L = \textrm{dim } M$.
+
+\end{document}

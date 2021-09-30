@@ -1,0 +1,57 @@
+\documentclass[11pt]{amsart}
+\usepackage{amssymb,amsmath}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+
+
+\begin{document}
+
+
+\begin{theorem} 
+The field $\C$ is a vector space over $\R$.
+\end{theorem}
+
+\begin{theorem}
+A matrix of a change of the basis for a finite dimensional 
+linear space is nondegenerate.  
+\end{theorem}
+
+\begin{proof} 
+
+Consider a linear map 
+$$f : M \to M$$  
+such that  
+\begin{equation} \label{map}
+ f(e_i) = g_i. 
+\end{equation} 
+In (\ref{map}), $\{e_i\}_{i=1}^n$ and $\{ g_i \}_{i=1}^n$ are two bases 
+in $M$. 
+
+The rest of the proof can be found, e.g.,  
+in \cite{S}\footnote{But this is not a 
+way to solve a homework problem}. 
+\end{proof}
+
+\begin{thebibliography}{2}
+
+\bibitem[S]{S} G. Strang, {\it Introduction to linear algebra}, third ed, 
+Wellesley-Cambridge press, 2003
+
+\end{thebibliography}
+
+\end{document}
+
+
+This is an example of a bibliography. You can have references to books and 
+papers in the text and list them at the end. 
+
+Important: to get the references right, run latex twice. 
+
+Note the difference between the two ways to display math:
+$$             $$ makes a line with your equation;
+\begin{equation}       \end{equation} makes a line with your equation 
+and gives it a number, so later you can refer to it in the text, using 
+\label{...}  and \ref{...} operators.  

@@ -2,3 +2,4 @@ data
 runs
 *.npy
 *.zip
+.idea
