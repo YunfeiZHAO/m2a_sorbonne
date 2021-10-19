@@ -30,60 +30,61 @@ class FeatureExtractor(object):
     def __init__(self):
         super().__init__()
 
-    def getFeatures(self,obs):
+    def getFeatures(self, obs):
         pass
 
 # Ne fait rien, conserve les observations telles quelles
 # A utiliser pour CartPole et LunarLander
 class NothingToDo(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        ob=env.reset()
-        ob=ob.reshape(-1)
-        self.outSize=len(ob)
+        ob = env.reset()
+        ob = ob.reshape(-1)
+        self.outSize = len(ob)
 
-    def getFeatures(self,obs):
+    def getFeatures(self, obs):
         #print(obs)
-        return obs.reshape(1,-1)
+        return obs.reshape(1, -1)
 
 # Ajoute le numero d'iteration (a priori pas vraiment utile et peut destabiliser dans la plupart des cas etudiés)
 class AddTime(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        ob=env.reset()
-        ob=ob.reshape(-1)
-        self.env=env
-        self.maxTime=env.config["duration"]
-        self.outSize=len(ob)+1
+        ob = env.reset()
+        ob = ob.reshape(-1)
+        self.env = env
+        self.maxTime = env.config["duration"]
+        self.outSize = len(ob)+1
 
-    def getFeatures(self,obs):
+    def getFeatures(self, obs):
         #print(obs)
-        return np.concatenate((obs.reshape(1,-1),np.array([self.env.steps/self.maxTime]).reshape(1,-1)),axis=1)
+        return np.concatenate((obs.reshape(1, -1), np.array([self.env.steps/self.maxTime]).reshape(1, -1)), axis=1)
 
 ######  Pour Gridworld #############################"
 
+
 class MapFromDumpExtractor(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
         outSize = env.start_grid_map.reshape(1, -1).shape[1]
-        self.outSize=outSize
+        self.outSize = outSize
 
     def getFeatures(self, obs):
         #prs(obs)
-        return obs.reshape(1,-1)
+        return obs.reshape(1, -1)
 
 
 # Representation simplifiée, pas besoin d'encoder les murs et les etats terminaux qui ne bougent pas
 # Extracteur recommandé pour Gridworld pour la plupart des algos
 class MapFromDumpExtractor2(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        outSize=env.start_grid_map.reshape(1, -1).shape[1]
-        self.outSize=outSize*3
+        outSize = env.start_grid_map.reshape(1, -1).shape[1]
+        self.outSize = outSize*3
 
     def getFeatures(self, obs):
-        state=np.zeros((3,np.shape(obs)[0],np.shape(obs)[1]))
-        state[0]=np.where(obs == 2,1,state[0])
+        state = np.zeros((3, np.shape(obs)[0], np.shape(obs)[1]))
+        state[0] = np.where(obs == 2, 1, state[0])
         state[1] = np.where(obs == 4, 1, state[1])
         state[2] = np.where(obs == 6, 1, state[2])
         return state.reshape(1,-1)
@@ -91,59 +92,62 @@ class MapFromDumpExtractor2(FeatureExtractor):
 
 # Representation simplifiée, avec position agent
 class MapFromDumpExtractor3(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        outSize=env.start_grid_map.reshape(1, -1).shape[1]
-        self.outSize=outSize*2+2
+        outSize = env.start_grid_map.reshape(1, -1).shape[1]
+        self.outSize = outSize*2+2
 
     def getFeatures(self, obs):
-        state=np.zeros((2,np.shape(obs)[0],np.shape(obs)[1]))
+        state = np.zeros((2, np.shape(obs)[0], np.shape(obs)[1]))
         state[0] = np.where(obs == 4, 1, state[0])
         state[1] = np.where(obs == 6, 1, state[1])
-        pos=np.where(obs==2)
-        posx=pos[0]
-        posy=pos[1]
+        pos = np.where(obs == 2)
+        posx = pos[0]
+        posy = pos[1]
         return np.concatenate((posx.reshape(1,-1),posy.reshape(1,-1),state.reshape(1,-1)),axis=1)
 
 # Representation (très) simplifiée, uniquement la position de l'agent
 # Ne permet pas de gérer les éléments jaunes et roses de GridWorld
+
+
 class MapFromDumpExtractor4(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        self.outSize=2
+        self.outSize = 2
 
     def getFeatures(self, obs):
-        pos=np.where(obs==2)
-        posx=pos[0]
-        posy=pos[1]
+        pos = np.where(obs == 2)
+        posx = pos[0]
+        posy = pos[1]
         #print(posx,posy)
         return np.concatenate((posx.reshape(1,-1),posy.reshape(1,-1)),axis=1)
 
 # Representation simplifiée, pour conv
-class MapFromDumpExtractor5(FeatureExtractor):
-    def __init__(self,env):
-        super().__init__()
 
-        self.outSize=(3,env.start_grid_map.shape[0],env.start_grid_map.shape[1])
+
+class MapFromDumpExtractor5(FeatureExtractor):
+    def __init__(self, env):
+        super().__init__()
+        self.outSize = (3, env.start_grid_map.shape[0], env.start_grid_map.shape[1])
 
     def getFeatures(self, obs):
-        state=np.zeros((1,3,np.shape(obs)[0],np.shape(obs)[1]))
-        state[0,0]=np.where(obs == 2,1,state[0,0])
-        state[0,1] = np.where(obs == 4, 1, state[0,1])
-        state[0,2] = np.where(obs == 6, 1, state[0,2])
+        state = np.zeros((1, 3, np.shape(obs)[0], np.shape(obs)[1]))
+        state[0, 0]=np.where(obs == 2, 1, state[0, 0])
+        state[0, 1] = np.where(obs == 4, 1, state[0, 1])
+        state[0, ] = np.where(obs == 6, 1, state[0, 2])
         return state
 
 
 # Autre possibilité de représentation, en terme de distances dans la carte
 class DistsFromStates(FeatureExtractor):
-    def __init__(self,env):
+    def __init__(self, env):
         super().__init__()
-        self.outSize=16
+        self.outSize = 16
 
     def getFeatures(self, obs):
         #prs(obs)
         #x=np.loads(obs)
-        x=obs
+        x = obs
         #print(x)
         astate = list(map(
             lambda x: x[0] if len(x) > 0 else None,
@@ -291,7 +295,7 @@ class convMDP(nn.Module):
 # Classe basique de NN générique
 # Accepte une liste de tailles de couches pour la variables layers (permet de définir la structure)
 class NN(nn.Module):
-    def __init__(self, inSize, outSize, layers=[], finalActivation=None, activation=torch.tanh,dropout=0.0):
+    def __init__(self, inSize, outSize, layers=[], finalActivation=None, activation=torch.tanh, dropout=0.0):
         super(NN, self).__init__()
         self.layers = nn.ModuleList([])
         for x in layers:
@@ -312,11 +316,10 @@ class NN(nn.Module):
         for i in range(1, len(self.layers)):
             x = self.activation(x)
             if self.dropout is not None:
-                x=self.dropout(x)
-
+                x = self.dropout(x)
             x = self.layers[i](x)
 
         if self.finalActivation is not None:
-            x=self.finalActivation(x)
+            x = self.finalActivation(x)
 
         return x
