@@ -1,6 +1,6 @@
 import time
 import subprocess
-from collections import namedtuple,defaultdict
+from collections import namedtuple, defaultdict
 import logging
 import json
 import os
@@ -92,12 +92,15 @@ def write_yaml(file,dotdict):
     with open(file, 'w', encoding='utf8') as outfile:
         yaml.dump(d, outfile, default_flow_style=False, allow_unicode=True)
 
+
 global verbose
 verbose=2
+
 
 def printv(*o,p=0):
     if p<verbose:
         print(*o)
+
 
 def checkConfUpdate(outdir,config):
     if os.path.exists(os.path.join(outdir, 'update.yaml')):
@@ -117,6 +120,7 @@ def checkConfUpdate(outdir,config):
         except SyntaxError:
             print("pb with exec code in config")
 
+
 def logConfig(logger,config):
     print(str(yaml.dump(dict(config))))
     st = ""
@@ -124,7 +128,8 @@ def logConfig(logger,config):
         st += "\t \t \t \n" + str(i) + ":" + str(v)
     logger.writer.add_text("config", st, 1)
 
-def logRun(name,config,agent_object):
+
+def logRun(name, config, agent_object):
     global agent
     agent=agent_object
     now = datetime.now()
@@ -138,7 +143,7 @@ def logRun(name,config,agent_object):
     logger = LogMe(SummaryWriter(outdir))
     loadTensorBoard(outdir)
     logConfig(logger, config)
-    return logger,outdir
+    return logger, outdir
 
 
 def init(config_file, algoName):
@@ -159,6 +164,6 @@ def init(config_file, algoName):
     save_src(os.path.abspath(outdir))
     write_yaml(os.path.join(outdir, 'config.yaml'), config)
     logger = LogMe(SummaryWriter(outdir))
-    loadTensorBoard(outdir)
+    # loadTensorBoard(outdir)
 
     return env, config, outdir, logger

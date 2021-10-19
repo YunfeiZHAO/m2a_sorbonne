@@ -9,7 +9,7 @@ import torch
 from utils import *
 from core import *
 from torch.utils.tensorboard import SummaryWriter
-import highway_env
+# import highway_env
 from matplotlib import pyplot as plt
 import yaml
 from datetime import datetime
@@ -19,26 +19,25 @@ class RandomAgent(object):
     """The world's simplest agent!"""
 
     def __init__(self, env, opt):
-        self.opt=opt
-        self.env=env
+        self.opt = opt
+        self.env = env
         if opt.fromFile is not None:
             self.load(opt.fromFile)
         self.action_space = env.action_space
         self.featureExtractor = opt.featExtractor(env)
-        self.test=False
-        self.nbEvents=0
-
+        self.test = False
+        self.nbEvents = 0
 
     def act(self, obs):
-        a=self.action_space.sample()
+        a = self.action_space.sample()
         return a
 
     # sauvegarde du modèle
-    def save(self,outputDir):
+    def save(self, outputDir):
         pass
 
     # chargement du modèle.
-    def load(self,inputDir):
+    def load(self, inputDir):
         pass
 
     # apprentissage de l'agent. Dans cette version rien à faire
@@ -49,16 +48,19 @@ class RandomAgent(object):
         pass
 
     # enregistrement de la transition pour exploitation par learn ulterieure
-    def store(self,ob, action, new_ob, reward, done, it):
+    def store(self, ob, action, new_ob, reward, done, it):
         # Si l'agent est en mode de test, on n'enregistre pas la transition
         if not self.test:
 
-            # si on atteint la taille max d'episode en apprentissage, alors done ne devrait pas etre a true (episode pas vraiment fini dans l'environnement)
+            # si on atteint la taille max d'episode en apprentissage,
+            # alors done ne devrait pas etre a true (episode pas vraiment fini dans l'environnement)
             if it == self.opt.maxLengthTrain:
                 print("undone")
-                done=False
+                done = False
             tr = (ob, action, reward, new_ob, done)
-            self.lastTransition=tr #ici on n'enregistre que la derniere transition pour traitement immédiat, mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
+            # ici on n'enregistre que la derniere transition pour traitement immédiat,
+            # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
+            self.lastTransition = tr
 
     # retoune vrai si c'est le moment d'entraîner l'agent.
     # Dans cette version retourne vrai tous les freqoptim evenements
@@ -66,11 +68,15 @@ class RandomAgent(object):
     def timeToLearn(self,done):
         if self.test:
             return False
-        self.nbEvents+=1
-        return self.nbEvents%self.opt.freqOptim == 0
+        self.nbEvents += 1
+        return self.nbEvents % self.opt.freqOptim == 0
+
 
 if __name__ == '__main__':
+    # pour lunar pip install Box2D
     env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "RandomAgent")
+    # env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "RandomAgent")
+    # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "RandomAgent")
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
@@ -79,9 +85,7 @@ if __name__ == '__main__':
     np.random.seed(config["seed"])
     episode_count = config["nbEpisodes"]
 
-    agent = RandomAgent(env,config)
-
-
+    agent = RandomAgent(env, config)
     rsum = 0
     mean = 0
     verbose = True
@@ -128,18 +132,19 @@ if __name__ == '__main__':
                 env.render()
 
             ob = new_ob
-            action= agent.act(ob)
+            action = agent.act(ob)
             new_ob, reward, done, _ = env.step(action)
             new_ob = agent.featureExtractor.getFeatures(new_ob)
 
-            j+=1
+            j += 1
 
             # Si on a atteint la longueur max définie dans le fichier de config
-            if ((config["maxLengthTrain"] > 0) and (not agent.test) and (j == config["maxLengthTrain"])) or ( (agent.test) and (config["maxLengthTest"] > 0) and (j == config["maxLengthTest"])):
+            if ((config["maxLengthTrain"] > 0) and (not agent.test) and (j == config["maxLengthTrain"])) or \
+                    ((agent.test) and (config["maxLengthTest"] > 0) and (j == config["maxLengthTest"])):
                 done = True
                 print("forced done!")
 
-            agent.store(ob, action, new_ob, reward, done,j)
+            agent.store(ob, action, new_ob, reward, done, j)
             rsum += reward
 
             if agent.timeToLearn(done):
@@ -150,7 +155,5 @@ if __name__ == '__main__':
                 agent.nbEvents = 0
                 mean += rsum
                 rsum = 0
-
                 break
-
     env.close()
