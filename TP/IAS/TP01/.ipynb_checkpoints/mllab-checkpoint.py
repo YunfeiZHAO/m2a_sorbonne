@@ -286,9 +286,9 @@ def plot_level_set(red, data=None, num=500, num_levels=10, component=0):
     plt.gca().clabel(cs)
 
 
-def gaussian_sample(mu=[0, 0], sigma1=1., sigma2=1., theta=0., n=50):
+def gaussian_sample(mu=[0, 0], sigma1=1., sigma2=1., theta=0., n=50, random_state=None):
     cov = covariance(sigma1, sigma2, theta)
-    x = multivariate_normal.rvs(mean=mu, cov=cov, size=n)
+    x = multivariate_normal.rvs(mean=mu, cov=cov, size=n, random_state=random_state)
     return x
 
 

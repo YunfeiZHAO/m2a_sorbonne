@@ -19,3 +19,4 @@ maxLengthTest: 500                                                              
 maxLengthTrain: 100                                                                   # Longueur maxi des trajectoires en Train
 execute: |                                                                            # a executer apres le chargement de l'environnement
     env.setPlan(config["map"], config["rewards"])
+

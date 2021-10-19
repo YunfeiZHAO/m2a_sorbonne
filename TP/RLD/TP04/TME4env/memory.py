@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SumTree:
     def __init__(self, mem_size):
         self.tree = np.zeros(2 * mem_size - 1)
@@ -7,7 +8,6 @@ class SumTree:
         self.size = mem_size
         self.ptr = 0
         self.nentities=0
-
 
     def update(self, idx, p):
         tree_idx = idx + self.size - 1
@@ -59,11 +59,11 @@ class SumTree:
 
 class Memory:
 
-    def __init__(self, mem_size, prior=True,p_upper=1.,epsilon=.01,alpha=1,beta=1):
-        self.p_upper=p_upper
-        self.epsilon=epsilon
-        self.alpha=alpha
-        self.beta=beta
+    def __init__(self, mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1):
+        self.p_upper = p_upper
+        self.epsilon = epsilon
+        self.alpha = alpha
+        self.beta = beta
         self.prior = prior
         self.nentities=0
         #self.dict={}
@@ -87,13 +87,13 @@ class Memory:
             p = self.tree.max_p
             if not p:
                 p = self.p_upper
-            idx=self.tree.store(p, transition)
+            idx = self.tree.store(p, transition)
             self.nentities += 1
             if self.nentities > self.mem_size:
                 self.nentities = self.mem_size
         else:
             self.mem[self.mem_ptr] = transition
-            idx=self.mem_ptr
+            idx = self.mem_ptr
             self.mem_ptr += 1
 
             if self.mem_ptr == self.mem_size:
@@ -106,8 +106,8 @@ class Memory:
     def sample(self, n):
         if self.prior:
             min_p = self.tree.min_p
-            if min_p==0:
-                min_p=self.epsilon**self.alpha
+            if min_p == 0:
+                min_p = self.epsilon**self.alpha
             seg = self.tree.total_p / n
             batch = np.zeros(n, dtype=object)
             w = np.zeros((n, 1), np.float32)
@@ -135,16 +135,16 @@ class Memory:
 
     def getNextIdx(self):
         if self.prior:
-            ptr=self.tree.getNextIdx()
+            ptr = self.tree.getNextIdx()
         else:
-            ptr=self.mem_ptr
+            ptr = self.mem_ptr
         return ptr
 
-    def getData(self,idx):
-        if idx >=self.nentities:
+    def getData(self, idx):
+        if idx >= self.nentities:
             return None
         if self.prior:
-            data=self.tree.data[idx]
+            data = self.tree.data[idx]
         else:
-            data=self.mem[idx]
+            data = self.mem[idx]
         return data
