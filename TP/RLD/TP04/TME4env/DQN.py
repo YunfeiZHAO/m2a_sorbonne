@@ -33,7 +33,7 @@ class DQN(object):
         self.discount = config["discount"]
 
         # Definition of replay memory D
-        self.D = Memory(self, opt.mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(self, opt.mem_size) #, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
@@ -41,6 +41,13 @@ class DQN(object):
         self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[50, 256, 512, 512, 50])
         with torch.no_grad():
             self.Q_target = torch.copy.deepcopy(self.Q)
+        # Definition of loss
+        self.loss = nn.MSELoss()
+        # Optimiser
+        # Optimiser
+        self.lr = 1e-6
+        self.optim = torch.optim.SGD(self.Q.parameters(), lr=self.lr)
+        self.optim.zero_grad()
 
     def act(self, obs):
         # epsilon greedy action
@@ -65,20 +72,25 @@ class DQN(object):
         if self.test:
             return
         else:
+            # get mini_batch a batch of (ob, action, reward, new_ob, done)
             _, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
-            obs_batch = torch.tensor(list(zip(*mini_batch))[0], dtype=torch.float)
-            new_obs_batch = torch.tensor(list(zip(*mini_batch))[3], dtype=torch.float)
-            r_batch = torch.tensor(list(zip(*mini_batch))[2], dtype=torch.float)
-            action_batch = torch.tensor(list(zip(*mini_batch))[1], dtype=torch.float)
-            done_batch = torch.tensor(list(zip(*mini_batch))[4], dtype=torch.float)
+            column_mini_batch = list(zip(*mini_batch))
+            obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float)
+            new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float)
+            r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
+            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.float)
+            done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
             y_batch = r_batch +\
                       self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
 
-            q_batch = self.Q.forward(obs_batch)
-            # gather
+            q_batch = self.Q.forward(obs_batch).gather(0,  torch.unsqueeze(action_batch, 0))
+            output = self.loss(y_batch, q_batch)
+            output.backward()
+            self.optim.step()
+            self.optim.zero_grad()
 
 
-    # enregistrement de la transition pour exploitation par learn ulterieure
+            # enregistrement de la transition pour exploitation par learn ulterieure
     def store(self, ob, action, new_ob, reward, done, it):
         # Si l'agent est en mode de test, on n'enregistre pas la transition
         if not self.test:
@@ -105,8 +117,8 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "RandomAgent")
-    # env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "RandomAgent")
+    # env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "RandomAgent")
+    env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "DQN")
     # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "RandomAgent")
 
     freqTest = config["freqTest"]

@@ -20,11 +20,11 @@ class SumTree:
     def store(self, p, data):
         self.data[self.ptr] = data
         self.update(self.ptr, p)
-        idx=self.ptr
+        idx = self.ptr
         self.ptr += 1
         if self.ptr == self.size:
             self.ptr = 0
-        self.nentities+=1
+        self.nentities += 1
         if self.nentities > self.size:
             self.nentities = self.size
         return idx
