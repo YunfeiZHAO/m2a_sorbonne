@@ -11,7 +11,7 @@ featExtractor: !!python/name:__main__.MapFromDumpExtractor2 ''                  
 freqSave: 1000                                                                        # frequence de sauvegarde du modèle
 freqTest: 10                                                                          # frequence de test
 nbTest: 1                                                                             # nb de tests à effectuer tous les freqTest trajectoires
-freqVerbose: 10                                                                       # frequence d'affichage de l'environnement
+freqVerbose: 100                                                                       # frequence d'affichage de l'environnement
 freqOptim: 1                                                                          # Optimisation de la politique tous les freqOptim evenements
 fromFile: null                                                                        # si pas null, chargement du modèle a partir de ce fichier
 nbEpisodes: 1000000                                                                   # nombre d'episodes maximal
