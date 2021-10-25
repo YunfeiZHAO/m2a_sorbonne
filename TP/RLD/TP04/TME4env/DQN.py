@@ -9,8 +9,9 @@ import gridworld
 # import highway_env
 
 import torch
+import copy
 from torch.utils.tensorboard import SummaryWriter
-
+import torch.nn.functional as F
 import yaml
 from datetime import datetime
 
@@ -33,20 +34,20 @@ class DQN(object):
         self.discount = config["discount"]
 
         # Definition of replay memory D
-        self.D = Memory(self, opt.mem_size) #, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(opt.mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
         action_feature_size = self.action_space.n
         self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[50, 256, 512, 512, 50])
         with torch.no_grad():
-            self.Q_target = torch.copy.deepcopy(self.Q)
+            self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
-        self.loss = nn.MSELoss()
-        # Optimiser
+        self.loss = F.smooth_l1_loss
+
         # Optimiser
         self.lr = 1e-6
-        self.optim = torch.optim.SGD(self.Q.parameters(), lr=self.lr)
+        self.optim = torch.optim.Adam(self.Q.parameters(), lr=self.lr)
         self.optim.zero_grad()
 
     def act(self, obs):
@@ -54,7 +55,7 @@ class DQN(object):
         if torch.rand(1) < self.opt.eps:
             a = self.action_space.sample()
         else:
-            a = torch.argmax(self.Q.forward(obs))
+            a = torch.argmax(self.Q.forward(torch.Tensor(obs))).item()
         return a
 
     # sauvegarde du modèle
@@ -78,13 +79,14 @@ class DQN(object):
             obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float)
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float)
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
-            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.float)
+            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
             y_batch = r_batch +\
                       self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
 
-            q_batch = self.Q.forward(obs_batch).gather(0,  torch.unsqueeze(action_batch, 0))
+            q_batch = self.Q.forward(obs_batch).squeeze(dim=1).gather(0,  torch.unsqueeze(action_batch, 1))
             output = self.loss(y_batch, q_batch)
+            logger.direct_write("Loss", output, i)
             output.backward()
             self.optim.step()
             self.optim.zero_grad()
@@ -100,6 +102,7 @@ class DQN(object):
                 print("undone")
                 done = False
             tr = (ob, action, reward, new_ob, done)
+            self.D.store(tr)
             # ici on n'enregistre que la derniere transition pour traitement immédiat,
             # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
             self.lastTransition = tr
@@ -117,9 +120,9 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    # env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "RandomAgent")
-    env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "DQN")
-    # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "RandomAgent")
+    env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "DQN")
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
@@ -130,7 +133,7 @@ if __name__ == '__main__':
     config["mem_size"] = 1000
     config["mini_batch_size"] = 10
     config["eps"] = 0.1
-    config["C"] = 10
+    config["C"] = 20
     config["discount"] = 0.999
     # Agent
     agent = DQN(env, config)
@@ -181,6 +184,7 @@ if __name__ == '__main__':
 
             ob = new_ob
             action = agent.act(ob)
+
             new_ob, reward, done, _ = env.step(action)
             new_ob = agent.featureExtractor.getFeatures(new_ob)
 
