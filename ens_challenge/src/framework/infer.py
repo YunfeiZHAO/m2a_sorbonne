@@ -89,6 +89,7 @@ def _parse_args():
         config = yaml.load(f, Loader=yaml.FullLoader)
     config = YamlNamespace(config)
     config.dataset_folder = Path(config.dataset_folder).expanduser()
+    print(config.dataset_folder)
     assert config.dataset_folder.is_dir()
     config.xp_rootdir = Path(config.xp_rootdir).expanduser()
     assert config.xp_rootdir.is_dir()
@@ -97,6 +98,7 @@ def _parse_args():
         config.xp_dir = Path(max(str(d) for d in config.xp_rootdir.iterdir() if d.is_dir()))
     else:
         config.xp_dir = config.xp_rootdir/config.xp_name
+    print(config.xp_dir)
     assert config.xp_dir.is_dir()
     assert config.set in ('train', 'test', 'val')
 

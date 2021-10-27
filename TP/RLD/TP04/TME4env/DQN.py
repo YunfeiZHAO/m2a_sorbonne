@@ -46,7 +46,7 @@ class DQN(object):
         self.loss = F.smooth_l1_loss
 
         # Optimiser
-        self.lr = 1e-6
+        self.lr = opt.lr
         self.optim = torch.optim.Adam(self.Q.parameters(), lr=self.lr)
         self.optim.zero_grad()
 
@@ -91,9 +91,8 @@ class DQN(object):
             self.optim.step()
             self.optim.zero_grad()
 
-
-            # enregistrement de la transition pour exploitation par learn ulterieure
     def store(self, ob, action, new_ob, reward, done, it):
+        """enregistrement de la transition pour exploitation par learn ulterieure"""
         # Si l'agent est en mode de test, on n'enregistre pas la transition
         if not self.test:
             # si on atteint la taille max d'episode en apprentissage,
@@ -107,10 +106,10 @@ class DQN(object):
             # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
             self.lastTransition = tr
 
-    # retoune vrai si c'est le moment d'entraîner l'agent.
-    # Dans cette version retourne vrai tous les freqoptim evenements
-    # Mais on pourrait retourner vrai seulement si done pour s'entraîner seulement en fin d'episode
     def timeToLearn(self, done):
+        # retoune vrai si c'est le moment d'entraîner l'agent.
+        # Dans cette version retourne vrai tous les freqoptim evenements
+        # Mais on pourrait retourner vrai seulement si done pour s'entraîner seulement en fin d'episode
         if self.test:
             return False
         self.nbEvents += 1
@@ -130,11 +129,13 @@ if __name__ == '__main__':
     env.seed(config["seed"])
     np.random.seed(config["seed"])
     episode_count = config["nbEpisodes"]
-    config["mem_size"] = 1000
-    config["mini_batch_size"] = 10
+    config["mem_size"] = 10000
+    config["mini_batch_size"] = 100
     config["eps"] = 0.1
+    # optimisation step
     config["C"] = 20
     config["discount"] = 0.999
+    config["lr"] = 3e-4
     # Agent
     agent = DQN(env, config)
     rsum = 0

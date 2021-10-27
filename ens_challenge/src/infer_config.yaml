@@ -9,12 +9,12 @@ seed: 42
 # the size of each batch of images when performing prediction
 batch_size: 32
 # the path to the root folder of the dataset
-dataset_folder: '~/challenge-ens/data/dataset_UNZIPPED'
+dataset_folder: '../dataset'
 # the path to the root directory used to store experiments
-xp_rootdir: '~/challenge-ens/code/experiments'
+xp_rootdir: '../experiments'
 # the name of log directory for an experiment (result of training)
 # you can set to 'last' to refer to the lastly created directory under in <xp_rootdir>
-xp_name: '25-11-2020_20:40:43'
+xp_name: 'test'
 # the set to perform inference on: 'train', 'test' or 'val'
 # note: 'train' mean all train samples with the ones in validation excluded, and 'val' mean the ones in validation
 set: 'test'
