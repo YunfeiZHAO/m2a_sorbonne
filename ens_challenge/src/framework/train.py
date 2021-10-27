@@ -60,6 +60,7 @@ def _parse_args():
 
     return config
 
+
 if __name__ == '__main__':
 
     import multiprocessing
@@ -157,9 +158,11 @@ if __name__ == '__main__':
 
     # compute class weights for the loss: inverse-frequency balanced
     # note: we set to 0 the weights for the classes "no_data"(0) and "clouds"(1) to ignore these
-    class_weight = (1 / LCD.TRAIN_CLASS_COUNTS[2:])* LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
-    class_weight[LCD.IGNORED_CLASSES_IDX] = 0.
+    class_weight = (1 / LCD.TRAIN_CLASS_COUNTS[2:]) * LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
+    class_weight = np.append(np.zeros(2), class_weight)
+    class_weight = {i: class_weight[i] for i in range(len(class_weight))}
     print(f"Will use class weights: {class_weight}")
+    print(type(class_weight))
 
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
     print("Compile model")
