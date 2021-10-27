@@ -3,3 +3,4 @@ runs
 *.npy
 *.zip
 .idea
+datasets
