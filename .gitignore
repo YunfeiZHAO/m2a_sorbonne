@@ -4,3 +4,5 @@ runs
 *.npy
 *.zip
 .idea
+datasets
+.ipynb_checkpoints
