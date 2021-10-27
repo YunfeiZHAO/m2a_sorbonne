@@ -13,6 +13,7 @@ class RNN(nn.Module):
         :param hidden_dim: dimension of h: h
         """
         super().__init__()
+        self.hidden_dim = hidden_dim
         self.x_linear = nn.Linear(input_dim, hidden_dim)
         self.h_linear = nn.Linear(hidden_dim, hidden_dim)
         self.activate = nn.Tanh()
@@ -21,12 +22,24 @@ class RNN(nn.Module):
 
     def one_step(self, x, h):
         """ from X(t), H(t) get H(t+1)
+        :param x: length × batch × dim
+        :param h: batch × latent
+        :return: length × batch × latent
         """
+
         return self.activate(self.x_linear(x) + self.h_linear(h))
 
 
     def forward(self, x, h):
-        for xt in x:
+        length, batch, dim = x.size()
+
+        hidden_stats = torch.zeros(length, batch, self.hidden_dim)
+        foro xt in x:
+
+
+
+
+
 
 
     def decode(self, h):
@@ -40,10 +53,9 @@ class SampleMetroDataset(Dataset):
             * length : longueur des séquences d'exemple
             * stations_max : normalisation à appliquer
         """
-        self.data, self.length, self.stations_max = data, length, stations_max
-        if stations_max is None:
-            ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
-            self.stations_max = torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
+        self.data, self.length= data, length
+        ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
+        self.stations_max = stations_max if stations_max is not None else torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
         ## Normalisation des données
         self.data = self.data / self.stations_max
         self.nb_days, self.nb_timeslots, self.classes = self.data.size(0), self.data.size(1), self.data.size(2)
@@ -61,18 +73,16 @@ class SampleMetroDataset(Dataset):
         day = i % self.nb_days
         return self.data[day,timeslot:(timeslot+self.length),station],station
 
-
 class ForecastMetroDataset(Dataset):
-    def __init__(self, data, length=20, stations_max=None):
+    def __init__(self, data,length=20,stations_max=None):
         """
             * data : tenseur des données au format  Nb_days x Nb_slots x Nb_Stations x {In,Out}
             * length : longueur des séquences d'exemple
             * stations_max : normalisation à appliquer
         """
-        self.data, self.length, self.stations_max = data, length, stations_max
-        if stations_max is None:
-            ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
-            self.stations_max = torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
+        self.data, self.length= data,length
+        ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
+        self.stations_max = stations_max if stations_max is not None else torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
         ## Normalisation des données
         self.data = self.data / self.stations_max
         self.nb_days, self.nb_timeslots, self.classes = self.data.size(0), self.data.size(1), self.data.size(2)
@@ -87,4 +97,5 @@ class ForecastMetroDataset(Dataset):
         timeslot = i // self.nb_days
         day = i % self.nb_days
         return self.data[day,timeslot:(timeslot+self.length-1)],self.data[day,(timeslot+1):(timeslot+self.length)]
+
 
