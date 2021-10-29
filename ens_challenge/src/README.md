@@ -1,109 +1,168 @@
-# ENS Challenge Data 2021 : Land cover predictive modeling from satellite images
+# U-Net: Semantic segmentation with PyTorch
+<a href="#"><img src="https://img.shields.io/github/workflow/status/milesial/PyTorch-UNet/Publish%20Docker%20image?logo=github&style=for-the-badge" /></a>
+<a href="https://hub.docker.com/r/milesial/unet"><img src="https://img.shields.io/badge/docker%20image-available-blue?logo=Docker&style=for-the-badge" /></a>
+<a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-v1.9.0-red.svg?logo=PyTorch&style=for-the-badge" /></a>
+<a href="#"><img src="https://img.shields.io/badge/python-v3.6+-blue.svg?logo=python&style=for-the-badge" /></a>
 
-This repository stores the code for the benchmark model of the Challenge Data competition [“Land cover predictive modeling from satellite images”](https://challengedata.ens.fr/challenges/48) provided by Preligens.
-The proposed benchmark model is a deep neural network trained on the “proxy” task of semantic segmentation of the land cover labels at the pixel level. The network has a U-Net architecture ([Ronneberger et al 2015](https://arxiv.org/abs/1505.04597)).
+![input and output for a random image in the test dataset](https://i.imgur.com/GD8FcB7.png)
 
-## Data folder
 
-You can download the data as an archive containing the training images and masks, as well as the test images, from the challenge page.
+Customized implementation of the [U-Net](https://arxiv.org/abs/1505.04597) in PyTorch for Kaggle's [Carvana Image Masking Challenge](https://www.kaggle.com/c/carvana-image-masking-challenge) from high definition images.
 
-The dataset folder should be like this :
+- [Quick start using Docker](#quick-start-using-docker)
+- [Description](#description)
+- [Usage](#usage)
+  - [Docker](#docker)
+  - [Training](#training)
+  - [Prediction](#prediction)
+- [Weights & Biases](#weights--biases)
+- [Pretrained model](#pretrained-model)
+- [Data](#data)
+
+## Quick start using Docker
+
+1. [Install Docker 19.03 or later:](https://docs.docker.com/get-docker/)
+```bash
+curl https://get.docker.com | sh && sudo systemctl --now enable docker
 ```
-dataset_UNZIPPED
-├── test
-│   └── images
-│       ├── 10087.tif
-│       ├── 10088.tif
-│       ├── 10089.tif
-│       ├── 10090.tif
-        ... (5043 files)
-└── train
-    ├── images
-    │   ├── 10000.tif
-    │   ├── 10001.tif
-    │   ├── 10002.tif
-    │   ├── 10003.tif
-        ... (18491 files)
-    └── masks
-        ├── 10000.tif
-        ├── 10001.tif
-        ├── 10002.tif
-        ├── 10003.tif
-        ... (18491 files)
+2. [Install the NVIDIA container toolkit:](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+```bash
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+sudo systemctl restart docker
 ```
-The images are 16-bits GeoTIFF files of size (256,256,4) and the masks are 8-bits GeoTIFF files of size (256,256).
-
-Every sample has an identifier used in the CSVs in a column named `sample_id`.
-
-## Python environment
-
-The file `environment.yml` is an exported conda environment with all the dependencies for this project: you can recreate the environment with the command `conda env create -f environment.yml`. You first need to install miniconda if you don't have it installed already: go to [this link](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) to find instructions for your operating system.
-
-## Code usage
-
-The notebook `data_visualization.ipynb` can be used to visualize a few data points, as well as the class distribution in the training set. Notably you'll see how to load the images and masks using `tifffile`.
-
-The `framework` package contains scripts to train the model, then use the trained model to perform predictions over the testing set, and finally evaluate those predictions against corresponding ground truth labels.
-
-### Train
-
-To train the U-Net model on the training set for a certain number of epochs, use `framework/train.py` :
+3. [Download and run the image:](https://hub.docker.com/repository/docker/milesial/unet)
+```bash
+sudo docker run --rm --shm-size=8g --ulimit memlock=-1 --gpus all -it milesial/unet
 ```
-ipython framework/train.py -- --config config.yaml
-```
-The input is a YAML configuration file. See `train_config.yaml` for an example file with description of parameters, and values used in the benchmark.
 
-The experiment is saved in a folder with a structure like this :
+4. Download the data and run training:
+```bash
+bash scripts/download_data.sh
+python train.py --amp
 ```
-experiments
-└── 25-11-2020_20:40:43
-    ├── checkpoints
-    ├── plots
-    ├── fit_logs.csv
-    ├── tensorboard
-    └── val_samples.csv
-```
-Here, `experiments` is the root folder referenced by `xp_rootdir` in `config.yaml`. In the root folder, a directory for the experiment is created with name being the datetime of execution (here: `25-11-2020_20:40:43`). Inside, `checkpoints` contains snapshots of the model, saved after every epoch. `plots` contains the figures of predictions of the model after every epoch for a few train samples: it helps to qualitatively judge the progress of the training. The file `fit_logs.csv` contains logs of the training with loss and validation loss for every epoch. The file `val_samples.csv` contains the samples kept in validation during the training (the weights of the model are not optimized on those samples).
 
-### Predict
+## Description
+This model was trained from scratch with 5k images and scored a [Dice coefficient](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) of 0.988423 on over 100k test images.
 
-After having trained your model, you can use `framework/infer.py` to predict the class-distribution vector targets over samples in the train, validation, or test set, and saved them in a CSV file, with the right format for submission:
-```
-ipython framework/infer.py -- --config config.yaml
-```
-The input is a YAML configuration file. See `infer_config.yaml` for an example file with description of parameters.
+It can be easily used for multiclass segmentation, portrait segmentation, medical segmentation, ...
 
-### Evaluate
 
-The script `framework/eval.py` does the same thing as the evaluation done for submissions on the server. It computes the metric of the challenge (the Kullback-Leibler divergence) between a prediction CSV and a ground-truth CSV. Usage :
-```
-ipython framework/eval.py -- --gt-file path/to/labels.csv --pred-file path/to/predicted.csv -o /path/to/save.csv
-```
-Examples:
-* Evaluate on training set:
+## Usage
+**Note : Use Python 3.6 or newer**
 
-```
-ipython framework/eval.py -- --gt-file ../data/dataset_csvs/train_labels.csv --pred-file experiments/25-11-2020_20:40:43/epoch84_train_predicted.csv --out-csv experiments/25-11-2020_20:40:43/epoch84_train_predicted_score.csv
-```
-where ../data/dataset_csvs/train_labels.csv is where is stored the *y_train* file of the challenge.
+### Docker
 
-* Evaluate on validation set:
-```
-ipython framework/eval.py -- --gt-file ../data/dataset_csvs/train_labels.csv --pred-file experiments/25-11-2020_20:40:43/epoch84_val_predicted.csv --out-csv experiments/25-11-2020_20:40:43/epoch84_val_predicted_score.csv
+A docker image containing the code and the dependencies is available on [DockerHub](https://hub.docker.com/repository/docker/milesial/unet).
+You can download and jump in the container with ([docker >=19.03](https://docs.docker.com/get-docker/)):
+
+```console
+docker run -it --rm --shm-size=8g --ulimit memlock=-1 --gpus all milesial/unet
 ```
 
 
-## Model information
+### Training
 
-U-Net is composed of a contractive path and expansive path. The contractive path diminishes the spatial resolution by the repeated application of (3,3) convolutions and (2,2) max pooling with a stride of 2. Every step in the expansive path consists in (2,2) transposed convolutions that expand the spatial resolution, a concatenation with the feature map in correspondence in the contractive path, followed by (3,3) convolutions. At the last layer, that has the same resolution as the input, a (1,1) convolution is used to associate the feature map vector for every pixel to the number of classes.
-The benchmark model is a relatively small network made of 984,234 trainable parameters. The total number of convolution layers is 21, made of 64 feature maps in the contractive path, and 64 or 96 feature maps in the expansive path. We kept the number of feature maps low to be able to have this much layers while keeping the number of weights small. See `framework/model.py:UNet` for the exact definition of the model in Keras code.
+```console
+> python train.py -h
+usage: train.py [-h] [--epochs E] [--batch-size B] [--learning-rate LR]
+                [--load LOAD] [--scale SCALE] [--validation VAL] [--amp]
 
-The loss function used is a regular cross-entropy, with weights assigned to every class. The weight for a class is set to be the inverse of the frequency of this class in the training set. The special classes “no_data” and “clouds” that need to be ignored have their weights set to zero to avoid learning to predict them.
+Train the UNet on images and target masks
 
-As data augmentations during training, we used basic flips and rotations (90°, 270°).
-The model was trained for 90 epochs which took about 6 hours on a Nvidia Tesla P100-PCIE-16GB.
-To choose a snapshot for predicting the class distribution vectors on the testing set, we selected the one which is optimal for validation loss (the 86th epoch).
+optional arguments:
+  -h, --help            show this help message and exit
+  --epochs E, -e E      Number of epochs
+  --batch-size B, -b B  Batch size
+  --learning-rate LR, -l LR
+                        Learning rate
+  --load LOAD, -f LOAD  Load model from a .pth file
+  --scale SCALE, -s SCALE
+                        Downscaling factor of the images
+  --validation VAL, -v VAL
+                        Percent of the data that is used as validation (0-100)
+  --amp                 Use mixed precision
+```
 
-Note: the learning rate used is 0.001 and it wasn't tuned at all. The batch size is 32.
+By default, the `scale` is 0.5, so if you wish to obtain better results (but use more memory), set it to 1.
 
-The architecture used is inspired by [DeepSense.AI Kaggle DSTL competition entry](https://deepsense.ai/deep-learning-for-satellite-imagery-via-image-segmentation/). Refer to the “Model” section of the article and see [their model's figure](https://cdn-sv1.deepsense.ai/wp-content/uploads/2017/04/architecture_details.png), ours is very similar.
+Automatic mixed precision is also available with the `--amp` flag. [Mixed precision](https://arxiv.org/abs/1710.03740) allows the model to use less memory and to be faster on recent GPUs by using FP16 arithmetic. Enabling AMP is recommended.
+
+
+### Prediction
+
+After training your model and saving it to `MODEL.pth`, you can easily test the output masks on your images via the CLI.
+
+To predict a single image and save it:
+
+`python predict.py -i image.jpg -o output.jpg`
+
+To predict a multiple images and show them without saving them:
+
+`python predict.py -i image1.jpg image2.jpg --viz --no-save`
+
+```console
+> python predict.py -h
+usage: predict.py [-h] [--model FILE] --input INPUT [INPUT ...] 
+                  [--output INPUT [INPUT ...]] [--viz] [--no-save]
+                  [--mask-threshold MASK_THRESHOLD] [--scale SCALE]
+
+Predict masks from input images
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model FILE, -m FILE
+                        Specify the file in which the model is stored
+  --input INPUT [INPUT ...], -i INPUT [INPUT ...]
+                        Filenames of input images
+  --output INPUT [INPUT ...], -o INPUT [INPUT ...]
+                        Filenames of output images
+  --viz, -v             Visualize the images as they are processed
+  --no-save, -n         Do not save the output masks
+  --mask-threshold MASK_THRESHOLD, -t MASK_THRESHOLD
+                        Minimum probability value to consider a mask pixel white
+  --scale SCALE, -s SCALE
+                        Scale factor for the input images
+```
+You can specify which model file to use with `--model MODEL.pth`.
+
+## Weights & Biases
+
+The training progress can be visualized in real-time using [Weights & Biases](https://wandb.ai/).  Loss curves, validation curves, weights and gradient histograms, as well as predicted masks are logged to the platform.
+
+When launching a training, a link will be printed in the console. Click on it to go to your dashboard. If you have an existing W&B account, you can link it
+ by setting the `WANDB_API_KEY` environment variable.
+
+
+## Pretrained model
+A [pretrained model](https://github.com/milesial/Pytorch-UNet/releases/tag/v2.0) is available for the Carvana dataset. It can also be loaded from torch.hub:
+
+```python
+net = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=True)
+```
+The training was done with a 50% scale and bilinear upsampling.
+
+## Data
+The Carvana data is available on the [Kaggle website](https://www.kaggle.com/c/carvana-image-masking-challenge/data).
+
+You can also download it using the helper script:
+
+```
+bash scripts/download_data.sh
+```
+
+The input images and target masks should be in the `data/imgs` and `data/masks` folders respectively (note that the `imgs` and `masks` folder should not contain any sub-folder or any other files, due to the greedy data-loader). For Carvana, images are RGB and masks are black and white.
+
+You can use your own dataset as long as you make sure it is loaded properly in `utils/data_loading.py`.
+
+
+---
+
+Original paper by Olaf Ronneberger, Philipp Fischer, Thomas Brox:
+
+[U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597)
+
+![network architecture](https://i.imgur.com/jeDVpqF.png)
