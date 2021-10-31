@@ -11,10 +11,11 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 from evaluate import evaluate
 from unet import UNet
+
+from datasets.satellite import SatelliteDataset
 
 dir_img = Path('./data/imgs/')
 dir_mask = Path('./data/masks/')
@@ -31,10 +32,9 @@ def train_net(net,
               img_scale: float = 0.5,
               amp: bool = False):
     # 1. Create dataset
-    try:
-        dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
-    except (AssertionError, RuntimeError):
-        dataset = BasicDataset(dir_img, dir_mask, img_scale)
+    dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_images.csv',
+                               images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
+                               train=True)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -159,16 +159,21 @@ def get_args():
 
 
 if __name__ == '__main__':
+    # hyper parameters
     args = get_args()
+    args.epochs = 100
+    args.b = 32
+    args.l = 0.00001
+
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
     # Change here to adapt to your data
-    # n_channels=3 for RGB images
+    # n_channels = R-G-B-NIR
     # n_classes is the number of probabilities you want to get per pixel
-    net = UNet(n_channels=3, n_classes=2, bilinear=True)
+    net = UNet(n_channels=4, n_classes=10, bilinear=True)
 
     logging.info(f'Network:\n'
                  f'\t{net.n_channels} input channels\n'
