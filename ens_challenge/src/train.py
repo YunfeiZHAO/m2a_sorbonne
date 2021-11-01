@@ -2,24 +2,26 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import wandb
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 from utils.dice_score import dice_loss
+from utils.utils import show_mask
+
 from evaluate import evaluate
 from unet import UNet
 
 from datasets.satellite import SatelliteDataset
+from datasets.satellite import LandCoverData as LCD
 
-dir_img = Path('./data/imgs/')
-dir_mask = Path('./data/masks/')
-dir_checkpoint = Path('./checkpoints/')
+dir_checkpoint = Path('../checkpoints/')
 
 
 def train_net(net,
@@ -46,11 +48,14 @@ def train_net(net,
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
-    # (Initialize logging)
-    experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
-    experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
-                                  val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale,
-                                  amp=amp))
+    # (Initialize tensor board logging)
+    writer = SummaryWriter(log_dir='../Unet_experiments')
+
+    # Initialise wandb logging
+    # experiment = wandb.init(project='U-Net-ENS', resume='allow', anonymous='must')
+    # experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
+    #                               val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale,
+    #                               amp=amp))
 
     logging.info(f'''Starting training:
         Epochs:          {epochs}
@@ -68,8 +73,15 @@ def train_net(net,
     optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss()
+
     global_step = 0
+    # class weights
+    # compute class weights for the loss: inverse-frequency balanced
+    # note: we set to 0 the weights for the classes "no_data"(0) and "clouds"(1) to ignore these
+    class_weight = (1 / LCD.TRAIN_CLASS_COUNTS[2:]) * LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
+    class_weight = torch.tensor(np.append(np.zeros(2), class_weight), dtype=torch.float)
+    logging.info(f"Will use class weights: {class_weight}, type: {type(class_weight)}")
+    criterion = nn.CrossEntropyLoss(weight=class_weight).to(device)
 
     # 5. Begin training
     for epoch in range(epochs):
@@ -87,7 +99,7 @@ def train_net(net,
 
                 images = images.to(device=device, dtype=torch.float32)
                 true_masks = true_masks.to(device=device, dtype=torch.long)
-
+                # Loss
                 with torch.cuda.amp.autocast(enabled=amp):
                     masks_pred = net(images)
                     loss = criterion(masks_pred, true_masks) \
@@ -103,39 +115,37 @@ def train_net(net,
                 pbar.update(images.shape[0])
                 global_step += 1
                 epoch_loss += loss.item()
-                experiment.log({
-                    'train loss': loss.item(),
-                    'step': global_step,
-                    'epoch': epoch
-                })
-                pbar.set_postfix(**{'loss (batch)': loss.item()})
+                # experiment.log({
+                #     'train loss': loss.item(),
+                #     'step': global_step,
+                #     'epoch': epoch
+                # })
+                # pbar.set_postfix(**{'loss (batch)': loss.item()})
+                writer.add_scalars('Train batch loss', {'loss': loss.item()}, global_step)
 
                 # Evaluation round
-                division_step = (n_train // (10 * batch_size))
+                division_step = 20 * batch_size
                 if division_step > 0:
                     if global_step % division_step == 0:
-                        histograms = {}
                         for tag, value in net.named_parameters():
                             tag = tag.replace('/', '.')
-                            histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                            writer.add_histogram('Weights/' + tag, value.data.cpu(), epoch)
+                            writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), epoch)
 
                         val_score = evaluate(net, val_loader, device)
+                        # for debug
+                        # val_score = torch.tensor(0.3081, device='cuda:0')
+
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
-                        experiment.log({
-                            'learning rate': optimizer.param_groups[0]['lr'],
-                            'validation Dice': val_score,
-                            'images': wandb.Image(images[0].cpu()),
-                            'masks': {
-                                'true': wandb.Image(true_masks[0].float().cpu()),
-                                'pred': wandb.Image(torch.softmax(masks_pred, dim=1)[0].float().cpu()),
-                            },
-                            'step': global_step,
-                            'epoch': epoch,
-                            **histograms
-                        })
+                        writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
+                        writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
+                        image_id = batch['image_id'][0]
+                        writer.add_image(f'Evaluation-{image_id}/true_mask', show_mask(true_masks[0]).float().cpu(), 0, dataformats='HWC')
+                        writer.add_image(f'Evaluation-{image_id}/predicted_mask', show_mask(torch.argmax(masks_pred, dim=1)[0]).float().cpu(), 0, dataformats='HWC')
+
+        writer.add_scalar('Train/Epoch_loss', epoch_loss, epoch)
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
@@ -146,7 +156,7 @@ def train_net(net,
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks')
     parser.add_argument('--epochs', '-e', metavar='E', type=int, default=5, help='Number of epochs')
-    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
+    parser.add_argument('--batch_size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=0.00001,
                         help='Learning rate', dest='lr')
     parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
@@ -161,8 +171,8 @@ def get_args():
 if __name__ == '__main__':
     # hyper parameters
     args = get_args()
-    args.epochs = 100
-    args.b = 32
+    args.epochs = 150
+    args.batch_size = 8
     args.l = 0.00001
 
 
