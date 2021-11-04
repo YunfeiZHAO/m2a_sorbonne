@@ -3,6 +3,7 @@ import logging
 import sys
 from pathlib import Path
 import numpy as np
+from random import randrange
 
 import torch
 import torch.nn as nn
@@ -13,7 +14,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from utils.dice_score import dice_loss
-from utils.utils import show_mask
+from utils.utils import show_mask, show_image
 
 from evaluate import evaluate
 from unet import UNet
@@ -21,11 +22,14 @@ from unet import UNet
 from datasets.satellite import SatelliteDataset
 from datasets.satellite import LandCoverData as LCD
 
-dir_checkpoint = Path('../checkpoints/')
+# for saving checkpoints
+dir_checkpoint = Path('../checkpoints/Unet_experiment3_from_68epoch')
+
 
 
 def train_net(net,
               device,
+              tensorboard_dir,
               epochs: int = 5,
               batch_size: int = 1,
               learning_rate: float = 0.001,
@@ -36,7 +40,7 @@ def train_net(net,
     # 1. Create dataset
     dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_images.csv',
                                images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
-                               train=True)
+                               type='train')
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -49,7 +53,7 @@ def train_net(net,
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize tensor board logging)
-    writer = SummaryWriter(log_dir='../Unet_experiments')
+    writer = SummaryWriter(log_dir=tensorboard_dir)
 
     # Initialise wandb logging
     # experiment = wandb.init(project='U-Net-ENS', resume='allow', anonymous='must')
@@ -124,7 +128,8 @@ def train_net(net,
                 writer.add_scalars('Train batch loss', {'loss': loss.item()}, global_step)
 
                 # Evaluation round
-                division_step = 20 * batch_size
+                division_step = 30 * batch_size
+                # division_step = 1  # for debugging
                 if division_step > 0:
                     if global_step % division_step == 0:
                         for tag, value in net.named_parameters():
@@ -141,9 +146,36 @@ def train_net(net,
                         logging.info('Validation Dice score: {}'.format(val_score))
                         writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
                         writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
-                        image_id = batch['image_id'][0]
-                        writer.add_image(f'Evaluation-{image_id}/true_mask', show_mask(true_masks[0]).float().cpu(), 0, dataformats='HWC')
-                        writer.add_image(f'Evaluation-{image_id}/predicted_mask', show_mask(torch.argmax(masks_pred, dim=1)[0]).float().cpu(), 0, dataformats='HWC')
+
+                        # For this training batch
+                        i = randrange(batch_size)
+                        image_id = batch['image_id'][i]
+                        # image: B, 4, H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
+                                         dataformats='CHW')
+                        # true_masks: B, H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-true_mask', show_mask(true_masks[i]).float().cpu(), 0,
+                                         dataformats='HWC')
+                        # masks_pred: B, C=10, H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-predicted_mask',
+                                         show_mask(torch.argmax(masks_pred[i], dim=0)).float().cpu(), 0, dataformats='HWC')
+
+                        # For random image in validation set
+                        j = randrange(n_val)
+                        val_sample = val_set.__getitem__(j)
+                        image_id = val_sample['image_id']
+                        image = val_sample['image'].unsqueeze(dim=0).to(device=device, dtype=torch.float32)
+                        true_mask = val_sample['mask']
+                        masks_pred = net(image)
+                        # image: 4, H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_image', show_image(image[0]).float().cpu(), 0,
+                                         dataformats='CHW')
+                        # true_masks: H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_true_mask', show_mask(true_mask), 0,
+                                         dataformats='HWC')
+                        # masks_pred: C=10, H, W
+                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_predicted_mask',
+                                         show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
 
         writer.add_scalar('Train/Epoch_loss', epoch_loss, epoch)
 
@@ -171,10 +203,11 @@ def get_args():
 if __name__ == '__main__':
     # hyper parameters
     args = get_args()
-    args.epochs = 150
+    args.epochs = 50
     args.batch_size = 8
     args.l = 0.00001
-
+    args.tensorboard_dir = '../Unet_experiment3_from_68epoch'
+    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/Unet_experiments2/checkpoint_epoch68.pth'
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -198,6 +231,7 @@ if __name__ == '__main__':
     try:
         train_net(net=net,
                   epochs=args.epochs,
+                  tensorboard_dir=args.tensorboard_dir,
                   batch_size=args.batch_size,
                   learning_rate=args.lr,
                   device=device,

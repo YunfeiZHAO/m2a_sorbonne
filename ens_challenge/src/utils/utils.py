@@ -59,6 +59,7 @@ class LandCoverData():
     TRAIN_PIXELS_MIN = 1
     TRAIN_PIXELS_MAX = 24356
 
+
 def plot_img_and_mask(img, mask):
     classes = mask.shape[0] if len(mask.shape) > 2 else 1
     fig, ax = plt.subplots(1, classes + 1)
@@ -76,7 +77,25 @@ def plot_img_and_mask(img, mask):
 
 
 def show_mask(mask_tensor):
+    # masks_tensor: H, W
     show_mask = torch.zeros((*mask_tensor.size(), 3))
     for c, color in LandCoverData.CLASSES_COLORPALETTE.items():
         show_mask[mask_tensor == c, :] = color / 255
     return show_mask
+
+
+def show_image(image_tensor):
+    """ Show a image tensor loaded from dataloader
+    :param image_tensor: C,H,W
+    return a displayable tensor
+    """
+    # for image diaplay in tensorboard
+    display_min = 50
+    display_max = 3000
+    image = image_tensor * LandCoverData.TRAIN_PIXELS_MAX
+    image = image.clip(display_min, display_max)
+    image = image / 1000  # divide by empirical mean
+    image = torch.as_tensor(image.clip(0, 1), dtype=torch.float)
+    return image
+
+
