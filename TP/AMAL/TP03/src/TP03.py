@@ -105,7 +105,6 @@ def train_model():
     #model = MyAutoencodeur(input_dim=28*28, hidden_dim1=100)
     model = MyAutoencodeurMoreLayers(input_dim=28*28, hidden_dim1=300, hiden_dim2=100)
     model.to(device)
-
     # Optimiser
     lr = 1e-6
     optim = torch.optim.SGD(model.parameters(), lr=lr)

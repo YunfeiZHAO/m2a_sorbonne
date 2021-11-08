@@ -1,6 +1,14 @@
 data
+dataset
 runs
 *.npy
 *.zip
 .idea
 datasets
+.ipynb_checkpoints
+experiments
+Unet_experiments
+checkpoints
+experiments
+XP
+*.pyc
