@@ -10,3 +10,5 @@ experiments
 Unet_experiments
 checkpoints
 experiments
+XP
+*.pyc
