@@ -22,38 +22,38 @@ from unet import UNet
 from datasets.satellite import SatelliteDataset
 from datasets.satellite import LandCoverData as LCD
 
-# for saving checkpoints
-dir_checkpoint = Path('../checkpoints/Unet_experiment3_from_68epoch')
-
-
 
 def train_net(net,
               device,
-              tensorboard_dir,
+              tensorboard_writer,
+              dir_checkpoint,
               epochs: int = 5,
               batch_size: int = 1,
               learning_rate: float = 0.001,
               val_percent: float = 0.1,
               save_checkpoint: bool = True,
               img_scale: float = 0.5,
-              amp: bool = False):
+              amp: bool = False,
+              ):
     # 1. Create dataset
-    dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_images.csv',
+    train_set = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/val_index.csv',
                                images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
                                type='train')
 
-    # 2. Split into train / validation partitions
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    val_set = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/val_index.csv',
+                               images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
+                               type='val')
+    n_train = int(len(train_set))
+    n_val = int(len(val_set))
+    # # 2. Split into train / validation partitions
+    # n_val = int(len(dataset) * val_percent)
+    # n_train = len(dataset) - n_val
+    # train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
-
-    # (Initialize tensor board logging)
-    writer = SummaryWriter(log_dir=tensorboard_dir)
 
     # Initialise wandb logging
     # experiment = wandb.init(project='U-Net-ENS', resume='allow', anonymous='must')
@@ -128,7 +128,7 @@ def train_net(net,
                 writer.add_scalars('Train batch loss', {'loss': loss.item()}, global_step)
 
                 # Evaluation round
-                division_step = 30 * batch_size
+                division_step = 60 * batch_size
                 # division_step = 1  # for debugging
                 if division_step > 0:
                     if global_step % division_step == 0:
@@ -137,7 +137,7 @@ def train_net(net,
                             writer.add_histogram('Weights/' + tag, value.data.cpu(), epoch)
                             writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), epoch)
 
-                        val_score = evaluate(net, val_loader, device)
+                        val_score, val_crossentropy_loss, KL_score = evaluate(net, val_loader, device)
                         # for debug
                         # val_score = torch.tensor(0.3081, device='cuda:0')
 
@@ -146,6 +146,8 @@ def train_net(net,
                         logging.info('Validation Dice score: {}'.format(val_score))
                         writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
                         writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
+                        writer.add_scalar('Evaluation/cross entropy loss', val_crossentropy_loss, global_step)
+                        writer.add_scalar('Evaluation/validation kl score', KL_score, global_step)
 
                         # For this training batch
                         i = randrange(batch_size)
@@ -206,8 +208,13 @@ if __name__ == '__main__':
     args.epochs = 50
     args.batch_size = 8
     args.l = 0.00001
-    args.tensorboard_dir = '../Unet_experiment3_from_68epoch'
-    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/Unet_experiments2/checkpoint_epoch68.pth'
+    args.tensorboard_dir = '../test2'
+    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch7.pth'
+    # for saving checkpoints
+    args.dir_checkpoint = Path('../checkpoints/test2')
+
+    # (Initialize tensor board logging)
+    writer = SummaryWriter(log_dir=args.tensorboard_dir)
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -231,13 +238,14 @@ if __name__ == '__main__':
     try:
         train_net(net=net,
                   epochs=args.epochs,
-                  tensorboard_dir=args.tensorboard_dir,
+                  tensorboard_writer=writer,
                   batch_size=args.batch_size,
                   learning_rate=args.lr,
                   device=device,
                   img_scale=args.scale,
                   val_percent=args.val / 100,
-                  amp=args.amp)
+                  amp=args.amp,
+                  dir_checkpoint=args.dir_checkpoint)
     except KeyboardInterrupt:
         torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')

@@ -23,38 +23,6 @@ from torch.utils.tensorboard import SummaryWriter
 from utils.utils import show_mask, show_image
 
 
-def predict_img(net,
-                full_img,
-                device,
-                scale_factor=1,
-                out_threshold=0.5):
-    net.eval()
-    img = torch.from_numpy(BasicDataset.preprocess(full_img, scale_factor, is_mask=False))
-    img = img.unsqueeze(0)
-    img = img.to(device=device, dtype=torch.float32)
-
-    with torch.no_grad():
-        output = net(img)
-
-        if net.n_classes > 1:
-            probs = F.softmax(output, dim=1)[0]
-        else:
-            probs = torch.sigmoid(output)[0]
-
-        tf = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((full_img.size[1], full_img.size[0])),
-            transforms.ToTensor()
-        ])
-
-        full_mask = tf(probs.cpu()).squeeze()
-
-    if net.n_classes == 1:
-        return (full_mask > out_threshold).numpy()
-    else:
-        return F.one_hot(full_mask.argmax(dim=0), net.n_classes).permute(2, 0, 1).numpy()
-
-
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
@@ -93,7 +61,7 @@ def write_csv(index, matrix, path):
     print("make cvs done, with batch size = ", batch_size)
 
 
-def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, val_csv_path=None, new_csv_truth_path=None):
+def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, write_image=False, val_csv_path=None, new_csv_truth_path=None):
     args = get_args()
     args.model = weight
 
@@ -112,7 +80,8 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, val
         loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
         data_loader = DataLoader(dataset, shuffle=False, drop_last=False, **loader_args)
         # (Initialize tensor board logging)
-        writer = SummaryWriter(log_dir=tensorboard_dir)
+        if write_image:
+            writer = SummaryWriter(log_dir=tensorboard_dir)
         final_masks = torch.tensor([])
         all_image_ids = torch.tensor([])
         with tqdm(total=dataset.__len__(), desc=f'Testing dataset', unit='img') as pbar:
@@ -122,14 +91,15 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, val
                 masks_pred = net(images).float().cpu()
                 final_mask = torch.argmax(masks_pred, dim=1).float().cpu()
                 i = 0
-                # image: 4, H, W
-                writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/image',
-                                 show_image(images[0]), 0,
-                                 dataformats='CHW')
+                if write_image:
+                    # image: 4, H, W
+                    writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/image',
+                                     show_image(images[0]), 0,
+                                     dataformats='CHW')
 
-                # masks_pred: C=1, H, W
-                writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/predicted_mask',
-                                 show_mask(final_mask[0]), 0, dataformats='HWC')
+                    # masks_pred: C=1, H, W
+                    writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/predicted_mask',
+                                     show_mask(final_mask[0]), 0, dataformats='HWC')
 
                 final_masks = torch.cat((final_masks, final_mask))
                 all_image_ids = torch.cat((all_image_ids, image_ids))
@@ -142,31 +112,26 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, val
         write_csv(all_image_ids, final_masks, result_save_path)
 
 
-
 if __name__ == '__main__':
     # 1. test
-    test_dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/test_images.csv',
-                               images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
-                               type='test')
-    evaluate(dataset=test_dataset,
-             weight='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/Unet_experiments2/checkpoint_epoch68.pth',
-             batch_size=8,
-             tensorboard_dir='../test_experiments2',
-             result_save_path='../test_experiments2/test_predicted.csv')
+    # test_dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/test_images.csv',
+    #                                 images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
+    #                                 type='test')
+    # evaluate(dataset=test_dataset,
+    #          weight='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test2/checkpoint_epoch7.pth',
+    #          batch_size=8,
+    #          tensorboard_dir='../test_experiments4',
+    #          result_save_path='../test_experiments4/test_predicted.csv')
 
     # 2. validation
-    # val_percent = 0.3
-    # dataset = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_images.csv',
-    #                            images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
-    #                            type='val')
-    # n_val = int(len(dataset) * val_percent)
-    # n_train = len(dataset) - n_val
-    # train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    val_set = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/val_index.csv',
+                               images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
+                               type='val')
     #
-    # evaluate(dataset=val_set,
-    #          weight='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/Unet_experiments2/checkpoint_epoch68.pth',
-    #          batch_size=8,
-    #          tensorboard_dir='../val_experiments',
-    #          result_save_path='../val_experiments/val_predict.csv',
-    #          val_csv_path='../train_labels.csv',
-    #          new_csv_truth_path='../val_experiments/val.csv')
+    evaluate(dataset=val_set,
+             weight='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch7.pth',
+             batch_size=8,
+             tensorboard_dir='../val_experiments',
+             result_save_path='../val_experiments/val_predict.csv',
+             val_csv_path='../train_labels.csv',
+             new_csv_truth_path='../val_experiments/val.csv')

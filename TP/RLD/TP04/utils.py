@@ -11,13 +11,15 @@ import threading
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 
+
 def loadTensorBoard(outdir):
     t = threading.Thread(target=launchTensorBoard, args=([outdir]))
     t.start()
 
+
 def launchTensorBoard(tensorBoardPath):
     print('tensorboard --logdir=' + tensorBoardPath)
-    ret=os.system('tensorboard --logdir='  + tensorBoardPath)
+    ret=os.system('tensorboard --logdir=' + tensorBoardPath)
     if ret!=0:
         syspath = os.path.dirname(sys.executable)
         print(os.path.dirname(sys.executable))
@@ -25,13 +27,13 @@ def launchTensorBoard(tensorBoardPath):
     return
 
 
-
 class LogMe(dict):
-    def __init__(self,writer,term=True):
+    def __init__(self, writer, term=True):
         self.writer = writer
         self.dic = defaultdict(list)
         self.term = term
-    def write(self,i):
+
+    def write(self, i):
         if len(self.dic)==0: return
         s=f"Epoch {i} : "
         for k,v in self.dic.items():
@@ -39,7 +41,7 @@ class LogMe(dict):
             s+=f"{k}:{sum(v)*1./len(v)} -- "
         self.dic.clear()
         if self.term: logging.info(s)
-    def update(self,l):
+    def update(self, l):
         for k,v in l:
             self.add(k,v)
     def direct_write(self,k,v,i):

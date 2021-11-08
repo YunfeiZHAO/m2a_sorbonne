@@ -32,14 +32,16 @@ class DQN(object):
         self.test = False
         self.nbEvents = 0
         self.discount = config["discount"]
+        self.decay = config["decay"]
+        self.eps = opt.eps
 
         # Definition of replay memory D
-        self.D = Memory(opt.mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
         action_feature_size = self.action_space.n
-        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[50, 256, 512, 512, 50])
+        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[100, 200, 100])
         with torch.no_grad():
             self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
@@ -52,7 +54,8 @@ class DQN(object):
 
     def act(self, obs):
         # epsilon greedy action
-        if torch.rand(1) < self.opt.eps:
+        self.eps = self.eps * self.decay
+        if torch.rand(1) < self.eps:
             a = self.action_space.sample()
         else:
             a = torch.argmax(self.Q.forward(torch.Tensor(obs))).item()
@@ -74,17 +77,17 @@ class DQN(object):
             return
         else:
             # get mini_batch a batch of (ob, action, reward, new_ob, done)
-            _, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
+            mask, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
             column_mini_batch = list(zip(*mini_batch))
-            obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float)
-            new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float)
-            r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
+            obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
+            r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
+            new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
-            y_batch = r_batch +\
-                      self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
 
-            q_batch = self.Q.forward(obs_batch).squeeze(dim=1).gather(0,  torch.unsqueeze(action_batch, 1))
+            y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
+
+            q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # B
             output = self.loss(y_batch, q_batch)
             logger.direct_write("Loss", output, i)
             output.backward()
@@ -119,7 +122,7 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    env, config, outdir, logger = init('./configs/config_random_cartpole.yaml', "DQN")
+    env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
     # env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "DQN")
     # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "DQN")
 
@@ -135,6 +138,7 @@ if __name__ == '__main__':
     # optimisation step
     config["C"] = 20
     config["discount"] = 0.999
+    config["decay"] = 0.99999
     config["lr"] = 3e-4
     # Agent
     agent = DQN(env, config)
@@ -146,7 +150,6 @@ if __name__ == '__main__':
     done = False
     for i in range(episode_count):
         checkConfUpdate(outdir, config)
-
         rsum = 0
         agent.nbEvents = 0
         ob = env.reset()
@@ -174,7 +177,7 @@ if __name__ == '__main__':
         if i % freqSave == 0:
             agent.save(outdir + "/save_" + str(i))
 
-        j = 0
+        j = 0  # steps in an episode
         if verbose:
             env.render()
 
@@ -202,7 +205,7 @@ if __name__ == '__main__':
 
             if agent.timeToLearn(done):
                 agent.learn()
-                if j % config['C'] == 0:
+                if i % config['C'] == 0:
                     agent.Q_target.load_state_dict(agent.Q.state_dict())
 
             if done:

@@ -60,7 +60,7 @@ class ValueIterationAgent(object):
             rsum += reward
             j += 1
             self.env.render()
-            if done or j > 50:
+            if done or j > 100:
                 print("rsum=" + str(rsum) + ", " + str(j) + " actions")
                 break
 
@@ -73,7 +73,11 @@ if __name__ == '__main__':
     env = gym.make("gridworld-v0")
     # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
-    env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan7.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
+    env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
     # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
     env.seed(0)  # Initialise le seed du pseudo-random
     # print(env.action_space)  # Quelles sont les actions possibles
