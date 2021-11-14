@@ -80,7 +80,6 @@ class DQN(object):
             mask, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
             column_mini_batch = list(zip(*mini_batch))
             obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
-            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
