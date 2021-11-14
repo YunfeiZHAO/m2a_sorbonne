@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 
 
@@ -99,3 +100,23 @@ def show_image(image_tensor):
     return image
 
 
+def ratio(mask):
+    batch_size = mask.shape[0]
+    size = mask.shape[1]
+    res = torch.zeros((batch_size, 10))
+    for i in range(10):
+        res[:, i] = (mask == i).sum(dim=(1, 2))/(size*size)
+    return res
+
+
+def write_csv(index, matrix, path):
+    #index must be a tensor with size = batch_size
+    #matrix must be a tensor withe shape =batch_size * 256 * 256
+    batch_size = matrix.shape[0]
+    idx = index.reshape(batch_size, -1)
+    myratio = ratio(matrix)
+    data_pure = torch.cat((idx, myratio), dim=1)
+    data = pd.DataFrame(data_pure.numpy() , columns = ['sample_id','no_data','clouds','artificial','cultivated','broadleaf','coniferous','herbaceous','natural','snow','water'])
+    data = data.astype({'sample_id': 'int'})
+    data.to_csv(path, index=False)
+    print("make cvs done, with batch size = ", batch_size)

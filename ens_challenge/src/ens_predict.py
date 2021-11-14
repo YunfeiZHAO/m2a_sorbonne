@@ -1,26 +1,16 @@
 import argparse
 import logging
-import os
 from tqdm import tqdm
 
-import numpy as np
 import pandas as pd
 
 import torch
-import torch.nn.functional as F
-from PIL import Image
-from torchvision import transforms
-
-from utils.data_loading import BasicDataset
 from unet import UNet
-from utils.utils import plot_img_and_mask
-
 from datasets.satellite import SatelliteDataset
-from torch.utils.data import DataLoader, random_split
-
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.utils import show_mask, show_image
+from utils.utils import show_mask, show_image, write_csv
 
 
 def get_args():
@@ -39,77 +29,54 @@ def get_args():
     return parser.parse_args()
 
 
-def ratio(mask):
-    batch_size = mask.shape[0]
-    size = mask.shape[1]
-    res = torch.zeros((batch_size, 10))
-    for i in range(10):
-        res[:, i] = (mask == i).sum(dim=(1, 2))/(size*size)
-    return res
-
-
-def write_csv(index, matrix, path):
-    #index must be a tensor with size = batch_size
-    #matrix must be a tensor withe shape =batch_size * 256 * 256
-    batch_size = matrix.shape[0]
-    idx = index.reshape(batch_size, -1)
-    myratio = ratio(matrix)
-    data_pure = torch.cat((idx, myratio), dim=1)
-    data = pd.DataFrame(data_pure.numpy() , columns = ['sample_id','no_data','clouds','artificial','cultivated','broadleaf','coniferous','herbaceous','natural','snow','water'])
-    data = data.astype({'sample_id': 'int'})
-    data.to_csv(path, index=False)
-    print("make cvs done, with batch size = ", batch_size)
-
-
+@torch.no_grad()
 def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, write_image=False, val_csv_path=None, new_csv_truth_path=None):
     args = get_args()
     args.model = weight
 
-    with torch.no_grad():
-        # load model
-        net = UNet(n_channels=4, n_classes=10)
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logging.info(f'Loading model {args.model}')
-        logging.info(f'Using device {device}')
-        net.to(device=device)
-        net.load_state_dict(torch.load(args.model, map_location=device))
-        logging.info('Model loaded!')
+    # load model
+    net = UNet(n_channels=4, n_classes=10)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    logging.info(f'Loading model {args.model}')
+    logging.info(f'Using device {device}')
+    net.to(device=device)
+    net.load_state_dict(torch.load(args.model, map_location=device))
+    logging.info('Model loaded!')
 
+    # Create data loaders
+    loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
+    data_loader = DataLoader(dataset, shuffle=False, drop_last=False, **loader_args)
+    # (Initialize tensor board logging)
+    if write_image:
+        writer = SummaryWriter(log_dir=tensorboard_dir)
+    final_masks = torch.tensor([])
+    all_image_ids = torch.tensor([])
+    with tqdm(total=dataset.__len__(), desc=f'Testing dataset', unit='img') as pbar:
+        for batch in data_loader:
+            images = batch['image'].to(device=device)
+            image_ids = batch['image_id']
+            masks_pred = net(images).float().cpu()
+            final_mask = torch.argmax(masks_pred, dim=1).float().cpu()
+            i = 0
+            if write_image:
+                # image: 4, H, W
+                writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/image',
+                                 show_image(images[0]), 0,
+                                 dataformats='CHW')
 
-        # Create data loaders
-        loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
-        data_loader = DataLoader(dataset, shuffle=False, drop_last=False, **loader_args)
-        # (Initialize tensor board logging)
-        if write_image:
-            writer = SummaryWriter(log_dir=tensorboard_dir)
-        final_masks = torch.tensor([])
-        all_image_ids = torch.tensor([])
-        with tqdm(total=dataset.__len__(), desc=f'Testing dataset', unit='img') as pbar:
-            for batch in data_loader:
-                images = batch['image'].to(device=device)
-                image_ids = batch['image_id']
-                masks_pred = net(images).float().cpu()
-                final_mask = torch.argmax(masks_pred, dim=1).float().cpu()
-                i = 0
-                if write_image:
-                    # image: 4, H, W
-                    writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/image',
-                                     show_image(images[0]), 0,
-                                     dataformats='CHW')
+                # masks_pred: C=1, H, W
+                writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/predicted_mask',
+                                 show_mask(final_mask[0]), 0, dataformats='HWC')
 
-                    # masks_pred: C=1, H, W
-                    writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/predicted_mask',
-                                     show_mask(final_mask[0]), 0, dataformats='HWC')
+            final_masks = torch.cat((final_masks, final_mask))
+            all_image_ids = torch.cat((all_image_ids, image_ids))
+            pbar.update(images.shape[0])
+    if val_csv_path and new_csv_truth_path:
+        val_data = pd.read_csv(val_csv_path)
+        val_truth = val_data.loc[val_data['sample_id'].isin(all_image_ids)]
+        val_truth.to_csv(new_csv_truth_path, index=False)
 
-                final_masks = torch.cat((final_masks, final_mask))
-                all_image_ids = torch.cat((all_image_ids, image_ids))
-                pbar.update(images.shape[0])
-        if val_csv_path and new_csv_truth_path:
-            val_data = pd.read_csv(val_csv_path)
-            val_truth = val_data.loc[val_data['sample_id'].isin(all_image_ids)]
-            val_truth.to_csv(new_csv_truth_path, index=False)
-
-        write_csv(all_image_ids, final_masks, result_save_path)
+    write_csv(all_image_ids, final_masks, result_save_path)
 
 
 if __name__ == '__main__':

@@ -74,8 +74,9 @@ def train_net(net,
     ''')
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
-    optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
+    # optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
+    optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
     global_step = 0
@@ -128,56 +129,56 @@ def train_net(net,
                 writer.add_scalars('Train batch loss', {'loss': loss.item()}, global_step)
 
                 # Evaluation round
-                division_step = 60 * batch_size
-                # division_step = 1  # for debugging
-                if division_step > 0:
-                    if global_step % division_step == 0:
-                        for tag, value in net.named_parameters():
-                            tag = tag.replace('/', '.')
-                            writer.add_histogram('Weights/' + tag, value.data.cpu(), epoch)
-                            writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), epoch)
+                with torch.no_grad():
+                    division_step = 60 * batch_size
+                    # division_step = 1  # for debugging
+                    if division_step > 0:
+                        if global_step % division_step == 0:
+                            for tag, value in net.named_parameters():
+                                tag = tag.replace('/', '.')
+                                writer.add_histogram('Weights/' + tag, value.data.cpu(), epoch)
+                                writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), epoch)
 
-                        val_score, val_crossentropy_loss, KL_score = evaluate(net, val_loader, device)
-                        # for debug
-                        # val_score = torch.tensor(0.3081, device='cuda:0')
+                            val_score, val_crossentropy_loss, KL_score = evaluate(net, val_loader, device)
+                            # for debug
+                            # val_score = torch.tensor(0.3081, device='cuda:0')
+                            # scheduler.step(val_score)
 
-                        scheduler.step(val_score)
+                            logging.info('Validation Dice score: {}'.format(val_score))
+                            writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
+                            writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
+                            writer.add_scalar('Evaluation/cross entropy loss', val_crossentropy_loss, global_step)
+                            writer.add_scalar('Evaluation/validation kl score', KL_score, global_step)
 
-                        logging.info('Validation Dice score: {}'.format(val_score))
-                        writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
-                        writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
-                        writer.add_scalar('Evaluation/cross entropy loss', val_crossentropy_loss, global_step)
-                        writer.add_scalar('Evaluation/validation kl score', KL_score, global_step)
+                            # For this training batch
+                            i = randrange(batch_size)
+                            image_id = batch['image_id'][i]
+                            # image: B, 4, H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
+                                             dataformats='CHW')
+                            # true_masks: B, H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-true_mask', show_mask(true_masks[i]).float().cpu(), 0,
+                                             dataformats='HWC')
+                            # masks_pred: B, C=10, H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-predicted_mask',
+                                             show_mask(torch.argmax(masks_pred[i], dim=0)).float().cpu(), 0, dataformats='HWC')
 
-                        # For this training batch
-                        i = randrange(batch_size)
-                        image_id = batch['image_id'][i]
-                        # image: B, 4, H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
-                                         dataformats='CHW')
-                        # true_masks: B, H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-true_mask', show_mask(true_masks[i]).float().cpu(), 0,
-                                         dataformats='HWC')
-                        # masks_pred: B, C=10, H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-predicted_mask',
-                                         show_mask(torch.argmax(masks_pred[i], dim=0)).float().cpu(), 0, dataformats='HWC')
-
-                        # For random image in validation set
-                        j = randrange(n_val)
-                        val_sample = val_set.__getitem__(j)
-                        image_id = val_sample['image_id']
-                        image = val_sample['image'].unsqueeze(dim=0).to(device=device, dtype=torch.float32)
-                        true_mask = val_sample['mask']
-                        masks_pred = net(image)
-                        # image: 4, H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_image', show_image(image[0]).float().cpu(), 0,
-                                         dataformats='CHW')
-                        # true_masks: H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_true_mask', show_mask(true_mask), 0,
-                                         dataformats='HWC')
-                        # masks_pred: C=10, H, W
-                        writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_predicted_mask',
-                                         show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
+                            # For random image in validation set
+                            j = randrange(n_val)
+                            val_sample = val_set.__getitem__(j)
+                            image_id = val_sample['image_id']
+                            image = val_sample['image'].unsqueeze(dim=0).to(device=device, dtype=torch.float32)
+                            true_mask = val_sample['mask']
+                            masks_pred = net(image)
+                            # image: 4, H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_image', show_image(image[0]).float().cpu(), 0,
+                                             dataformats='CHW')
+                            # true_masks: H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_true_mask', show_mask(true_mask), 0,
+                                             dataformats='HWC')
+                            # masks_pred: C=10, H, W
+                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_predicted_mask',
+                                             show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
 
         writer.add_scalar('Train/Epoch_loss', epoch_loss, epoch)
 
@@ -207,9 +208,9 @@ if __name__ == '__main__':
     args = get_args()
     args.epochs = 50
     args.batch_size = 8
-    args.l = 0.00001
+    args.lr = 0.001
     args.tensorboard_dir = '../test2'
-    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch7.pth'
+    # args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch7.pth'
     # for saving checkpoints
     args.dir_checkpoint = Path('../checkpoints/test2')
 
