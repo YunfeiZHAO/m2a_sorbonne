@@ -1,18 +1,11 @@
-import numpy as np
-
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from tqdm import tqdm
-
-from utils.dice_score import multiclass_dice_coeff, dice_coeff
-from utils.utils import show_mask, show_image, write_csv
+from utils.utils import calculate_kl_loss, write_label_csv
 
 from unet import UNet
 from datasets.satellite import SatelliteDataset
-
-from torch.utils.tensorboard import SummaryWriter
 
 
 @torch.no_grad()
@@ -21,60 +14,52 @@ def evaluate(net, dataloader, device):
     Calculate dice score, cross_entropy, KL loss
     """
     net.eval()
-    batch_size = dataloader.batch_size
     num_val_batches = len(dataloader)
-    dice_score = 0
-    val_crossentropy_loss = 0
-    KL_score = 0
-    crossentropy = torch.nn.CrossEntropyLoss().to(device)
-    final_masks = torch.tensor([])
+    val_crossentropy_loss_mask = 0
+    val_crossentropy_loss_ratio = 0
+    mask_crossentropy = torch.nn.CrossEntropyLoss().to(device)
+    ratio_crossentropy = torch.nn.CrossEntropyLoss()
     all_image_ids = torch.tensor([])
+    true_labels = torch.tensor([])
+    predict_labels = torch.tensor([])
+
     # iterate over the validation set
     for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         image_ids, image, mask_true, ratio_label = batch['image_id'], batch['image'], batch['mask'], batch['label']
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float32)
         mask_true = mask_true.to(device=device, dtype=torch.long)
-        mask_true_onehot = F.one_hot(mask_true, net.n_classes).permute(0, 3, 1, 2).float()
-        # predict the mask
-        mask_pred = net(image)
-        final_mask = torch.argmax(mask_pred, dim=1)
-        final_masks = torch.cat((final_masks, final_mask))
-        all_image_ids = torch.cat((all_image_ids, image_ids))
-        # KL_score
-        predict_ratio = calculate_class_ratio(final_mask)
-        predict_ratio /= predict_ratio.sum(dim=1)[..., None]
-        ratio_label /= ratio_label.sum(dim=1)[..., None]
-        KL_score += torch.sum(ratio_label * np.log((ratio_label + 1e-7) / (predict_ratio + 1e-7)))
 
-        # cross entropy estimation
-        val_crossentropy_loss += crossentropy(mask_pred, mask_true).float().cpu()
-        # convert to one-hot format
-        if net.n_classes == 1:
-            mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
-            # compute the Dice score
-            dice_score += dice_coeff(mask_pred, mask_true_onehot, reduce_batch_first=False)
-        else:
-            mask_pred = F.one_hot(mask_pred.argmax(dim=1), net.n_classes).permute(0, 3, 1, 2).float()
-            # compute the Dice score, ignoring background
-            dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true_onehot[:, 1:, ...], reduce_batch_first=False)
-    write_csv(all_image_ids, final_masks, '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation.csv')
+        # image ids
+        all_image_ids = torch.cat((all_image_ids, image_ids))
+
+        # true label
+        true_labels = torch.cat((true_labels, ratio_label))
+
+        # predict the mask
+        mask_pred = net(image)  # B, C, h, w
+
+        # predicted class ratio by sum of each channel
+        batch_ratio = torch.sum(mask_pred, (-2, -1))  # B, C
+        batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
+        batch_ratio = batch_ratio.cpu()
+        predict_labels = torch.cat((predict_labels, batch_ratio))
+
+        # crossentropy_loss on mask
+        val_crossentropy_loss_mask += mask_crossentropy(mask_pred, mask_true).float().cpu()
+        # crossentropy_loss on ratio
+        val_crossentropy_loss_ratio += ratio_crossentropy(batch_ratio, ratio_label)
+
+
+    write_label_csv(all_image_ids, predict_labels, '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_predict_labels.csv')
+    write_label_csv(all_image_ids, true_labels, '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_true_labels.csv')
+
+    # KL_score
+    # take into account only last 8 classes
+    kl_loss = calculate_kl_loss(predict_labels[:, 2:10], true_labels[:, 2:10])
     net.train()
 
-    KL_score = KL_score / (num_val_batches * batch_size)
-    dice_score = dice_score / num_val_batches
-    return dice_score, val_crossentropy_loss, KL_score
-
-
-def calculate_class_ratio(mask):
-    """get class ratio from a batch of mask, we do not consider the first two class
-    :param mask: B, H, W
-    """
-    batch_size, h, w = mask.size()
-    res = torch.zeros((batch_size, 8))
-    for i, j in enumerate(np.arange(2, 10)):
-        res[:, i] = (mask == j).sum(dim=(1, 2))/(h*w)
-    return res
+    return val_crossentropy_loss_mask, val_crossentropy_loss_ratio, kl_loss
 
 
 if __name__ == '__main__':
@@ -90,5 +75,5 @@ if __name__ == '__main__':
     net = UNet(n_channels=4, n_classes=10, bilinear=True).to(device)
     load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch6.pth'
     net.load_state_dict(torch.load(load, map_location=device))
-    dice_score, val_crossentropy_loss, KL_score = evaluate(net, val_loader, device)
-    print(f"dice_score: {dice_score}, val_crossentropy_loss: {val_crossentropy_loss}, KL_score: {KL_score}")
+    val_crossentropy_loss_mask, val_crossentropy_loss_ratio, kl_loss = evaluate(net, val_loader, device)
+    print(f"val_crossentropy_loss_mask: {val_crossentropy_loss_mask}, val_crossentropy_loss_ratio: {val_crossentropy_loss_ratio}, kl_loss: {kl_loss}")

@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+import os
 from pathlib import Path
 import numpy as np
 from random import randrange
@@ -25,8 +26,9 @@ from datasets.satellite import LandCoverData as LCD
 
 def train_net(net,
               device,
-              tensorboard_writer,
+              writer,  # tensorboard writer
               dir_checkpoint,
+              start_epoch,
               epochs: int = 5,
               batch_size: int = 1,
               learning_rate: float = 0.001,
@@ -36,7 +38,7 @@ def train_net(net,
               amp: bool = False,
               ):
     # 1. Create dataset
-    train_set = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/val_index.csv',
+    train_set = SatelliteDataset(index_txt_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_index.csv',
                                images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
                                type='train')
 
@@ -77,6 +79,7 @@ def train_net(net,
     # optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
     optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.995)
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
     global_step = 0
@@ -86,7 +89,8 @@ def train_net(net,
     class_weight = (1 / LCD.TRAIN_CLASS_COUNTS[2:]) * LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
     class_weight = torch.tensor(np.append(np.zeros(2), class_weight), dtype=torch.float)
     logging.info(f"Will use class weights: {class_weight}, type: {type(class_weight)}")
-    criterion = nn.CrossEntropyLoss(weight=class_weight).to(device)
+    criterion_mask = nn.CrossEntropyLoss(weight=class_weight).to(device)
+    criterion_ratio = nn.CrossEntropyLoss().to(device)
 
     # 5. Begin training
     for epoch in range(epochs):
@@ -94,23 +98,25 @@ def train_net(net,
         epoch_loss = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
             for batch in train_loader:
-                images = batch['image']
-                true_masks = batch['mask']
-
+                images, true_masks, true_ratios = batch['image'], batch['mask'], batch['label']
                 assert images.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
 
                 images = images.to(device=device, dtype=torch.float32)
-                true_masks = true_masks.to(device=device, dtype=torch.long)
+                true_masks = true_masks.to(device=device, dtype=torch.long)  # B, h, w
+                true_ratios = true_ratios.to(device=device, dtype=torch.float32)  # B, 10
                 # Loss
                 with torch.cuda.amp.autocast(enabled=amp):
-                    masks_pred = net(images)
-                    loss = criterion(masks_pred, true_masks) \
-                           + dice_loss(F.softmax(masks_pred, dim=1).float(),
-                                       F.one_hot(true_masks, net.n_classes).permute(0, 3, 1, 2).float(),
-                                       multiclass=True)
+                    # predict mask and calculate ratio
+                    masks_pred = net(images)  # B, C, h, w
+                    batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, 10
+                    batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
+                    # generate loss for ratios and masks
+                    loss_mask = criterion_mask(masks_pred, true_masks)
+                    loss_ratio = criterion_ratio(batch_ratio, true_ratios)
+                    loss = loss_mask + loss_ratio
 
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
@@ -120,13 +126,9 @@ def train_net(net,
                 pbar.update(images.shape[0])
                 global_step += 1
                 epoch_loss += loss.item()
-                # experiment.log({
-                #     'train loss': loss.item(),
-                #     'step': global_step,
-                #     'epoch': epoch
-                # })
-                # pbar.set_postfix(**{'loss (batch)': loss.item()})
-                writer.add_scalars('Train batch loss', {'loss': loss.item()}, global_step)
+                writer.add_scalar('Train batch/mask loss', loss_mask.item(), global_step)
+                writer.add_scalar('Train batch/ratio loss', loss_ratio.item(), global_step)
+                writer.add_scalar('Train batch/total loss', loss.item(), global_step)
 
                 # Evaluation round
                 with torch.no_grad():
@@ -136,22 +138,24 @@ def train_net(net,
                         if global_step % division_step == 0:
                             for tag, value in net.named_parameters():
                                 tag = tag.replace('/', '.')
-                                writer.add_histogram('Weights/' + tag, value.data.cpu(), epoch)
-                                writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), epoch)
+                                writer.add_histogram('Weights/' + tag, value.data.cpu(), start_epoch+epoch)
+                                writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), start_epoch+epoch)
 
-                            val_score, val_crossentropy_loss, KL_score = evaluate(net, val_loader, device)
+                            val_crossentropy_loss_mask, val_crossentropy_loss_ratio, kl_loss = evaluate(net, val_loader, device)
                             # for debug
                             # val_score = torch.tensor(0.3081, device='cuda:0')
-                            # scheduler.step(val_score)
+                            scheduler.step()
 
-                            logging.info('Validation Dice score: {}'.format(val_score))
+                            logging.info('Validation kl_loss: {}'.format(kl_loss))
                             writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
-                            writer.add_scalar('Evaluation/validation Dice', val_score, global_step)
-                            writer.add_scalar('Evaluation/cross entropy loss', val_crossentropy_loss, global_step)
-                            writer.add_scalar('Evaluation/validation kl score', KL_score, global_step)
+                            writer.add_scalar('Evaluation/validation mask crossentropy loss',
+                                              val_crossentropy_loss_mask, global_step)
+                            writer.add_scalar('Evaluation/validation ratio crossentropy loss',
+                                              val_crossentropy_loss_ratio, global_step)
+                            writer.add_scalar('Evaluation/validation kl score', kl_loss, global_step)
 
                             # For this training batch
-                            i = randrange(batch_size)
+                            i = randrange(len(batch['image_id']))
                             image_id = batch['image_id'][i]
                             # image: B, 4, H, W
                             writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
@@ -180,12 +184,16 @@ def train_net(net,
                             writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_predicted_mask',
                                              show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
 
-        writer.add_scalar('Train/Epoch_loss', epoch_loss, epoch)
+        writer.add_scalar('Train/Epoch_loss', epoch_loss, start_epoch+epoch)
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-            torch.save(net.state_dict(), str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch + 1)))
-            logging.info(f'Checkpoint {epoch + 1} saved!')
+            torch.save({
+                'epoch': start_epoch+epoch,
+                'model_state_dict': net.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict()},
+                os.path.join(dir_checkpoint, 'checkpoint_epoch{}.pth'.format(start_epoch+epoch)))
+            logging.info(f'Checkpoint {start_epoch+epoch} saved!')
 
 
 def get_args():
@@ -204,15 +212,20 @@ def get_args():
 
 
 if __name__ == '__main__':
+    root = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/'
+    run_name = 'test4'
     # hyper parameters
     args = get_args()
-    args.epochs = 50
+    args.epochs = 100
     args.batch_size = 8
     args.lr = 0.001
-    args.tensorboard_dir = '../test2'
-    # args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test/checkpoint_epoch7.pth'
+
+    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test3/checkpoint_epoch20.pth'
+
+    # for tensorboard visualisation
+    args.tensorboard_dir = os.path.join(root, Path(f'experiments/{run_name}'))
     # for saving checkpoints
-    args.dir_checkpoint = Path('../checkpoints/test2')
+    args.dir_checkpoint = os.path.join(root, Path(f'checkpoints/{run_name}'))
 
     # (Initialize tensor board logging)
     writer = SummaryWriter(log_dir=args.tensorboard_dir)
@@ -231,22 +244,26 @@ if __name__ == '__main__':
                  f'\t{net.n_classes} output channels (classes)\n'
                  f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
 
+    start_epoch = 1
     if args.load:
-        net.load_state_dict(torch.load(args.load, map_location=device))
+        checkpoint = torch.load(args.load, map_location=device)
+        net.load_state_dict(checkpoint['model_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
         logging.info(f'Model loaded from {args.load}')
 
     net.to(device=device)
     try:
         train_net(net=net,
                   epochs=args.epochs,
-                  tensorboard_writer=writer,
+                  writer=writer,
+                  dir_checkpoint=args.dir_checkpoint,
+                  start_epoch=start_epoch,
                   batch_size=args.batch_size,
                   learning_rate=args.lr,
                   device=device,
                   img_scale=args.scale,
                   val_percent=args.val / 100,
-                  amp=args.amp,
-                  dir_checkpoint=args.dir_checkpoint)
+                  amp=args.amp)
     except KeyboardInterrupt:
         torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')
