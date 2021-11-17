@@ -103,8 +103,8 @@ def show_image(image_tensor):
 def ratio(mask):
     batch_size = mask.shape[0]
     size = mask.shape[1]
-    res = torch.zeros((batch_size, 10))
-    for i in range(10):
+    res = torch.zeros((batch_size, 10), dtype=torch.float64)
+    for i in np.arange(2, 10):
         res[:, i] = (mask == i).sum(dim=(1, 2))/(size*size)
     return res
 
@@ -117,6 +117,35 @@ def write_csv(index, matrix, path):
     myratio = ratio(matrix)
     data_pure = torch.cat((idx, myratio), dim=1)
     data = pd.DataFrame(data_pure.numpy() , columns = ['sample_id','no_data','clouds','artificial','cultivated','broadleaf','coniferous','herbaceous','natural','snow','water'])
+    # post processing
     data = data.astype({'sample_id': 'int'})
+    # change nature and snow to 0
+    data["natural"] = data["natural"] * 0
+    data["snow"] = data["snow"] * 0
     data.to_csv(path, index=False)
     print("make cvs done, with batch size = ", batch_size)
+
+
+def calculate_kl_loss(true_labels, predict_labels):
+    """calculate kl loss from two tensors if B, C"""
+    predict_labels /= predict_labels.sum(dim=1)[..., None]
+    true_labels /= true_labels.sum(dim=1)[..., None]
+    kl_loss = torch.mean(torch.sum(true_labels * np.log((true_labels + 1e-7) / (predict_labels + 1e-7)), 1))
+    try:
+        assert torch.isfinite(kl_loss)
+    except AssertionError as e:
+        raise ValueError('kl loss is NaN or infinite') from e
+    return kl_loss
+
+
+def write_label_csv(index, matrix, path):
+    """Generate true label from dataloader"""
+    #index must be a tensor with size = batch_size
+    #matrix must be a tensor withe shape =batch_size * 10
+    batch_size = matrix.shape[0]
+    idx = index.reshape(batch_size, -1)
+    data_pure = torch.cat((idx, matrix), dim=1)
+    data = pd.DataFrame(data_pure.numpy(), columns=['sample_id','no_data','clouds','artificial','cultivated','broadleaf','coniferous','herbaceous','natural','snow','water'])
+    data = data.astype({'sample_id': 'int'})
+    data.to_csv(path, index=False)
+    print("make cvs true label done, with batch size = ", batch_size)

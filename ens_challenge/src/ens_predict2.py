@@ -12,7 +12,7 @@ from datasets.satellite import SatelliteDataset
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.utils import show_mask, show_image, write_csv
+from utils.utils import show_mask, show_image, write_csv, write_label_csv
 
 
 def get_args():
@@ -51,7 +51,8 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
     # (Initialize tensor board logging)
     if write_image:
         writer = SummaryWriter(log_dir=tensorboard_dir)
-    final_masks = torch.tensor([])
+    # results
+    predict_labels = torch.tensor([])
     all_image_ids = torch.tensor([])
     with tqdm(total=dataset.__len__(), desc=f'Testing dataset', unit='img') as pbar:
         for batch in data_loader:
@@ -59,6 +60,14 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
             image_ids = batch['image_id']
             masks_pred = net(images).float().cpu()
             final_mask = torch.argmax(masks_pred, dim=1).float().cpu()
+
+            # predicted class ratio by sum of each channel
+            batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, C
+            batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
+            batch_ratio = batch_ratio.cpu()
+            predict_labels = torch.cat((predict_labels, batch_ratio))
+            # ids
+            all_image_ids = torch.cat((all_image_ids, image_ids))
             i = 0
             if write_image:
                 # image: 4, H, W
@@ -69,16 +78,14 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
                 # masks_pred: C=1, H, W
                 writer.add_image(f'Prediction_sample-{image_ids[i]}.tif/predicted_mask',
                                  show_mask(final_mask[0]), 0, dataformats='HWC')
-
-            final_masks = torch.cat((final_masks, final_mask))
-            all_image_ids = torch.cat((all_image_ids, image_ids))
             pbar.update(images.shape[0])
+
     if val_csv_path and new_csv_truth_path:
         val_data = pd.read_csv(val_csv_path)
         val_truth = val_data.loc[val_data['sample_id'].isin(all_image_ids)]
         val_truth.to_csv(new_csv_truth_path, index=False)
 
-    write_csv(all_image_ids, final_masks, result_save_path)
+    write_label_csv(all_image_ids, predict_labels, result_save_path)
 
 
 def test(checkpoint_path, batch_size, tensorboard_dir, result_save_path):

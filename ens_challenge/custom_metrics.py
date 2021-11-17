@@ -41,11 +41,14 @@ def custom_metric_function(dataframe_y_true, dataframe_y_pred):
 
 if __name__ == '__main__':
 
-    CSV_FILE_Y_TRUE = 'val_experiments/val.csv'
-    CSV_FILE_Y_PRED = 'val_experiments/val_predict.csv'
+    # CSV_FILE_Y_TRUE = 'val_experiments/val.csv'
+    # CSV_FILE_Y_PRED = 'val_experiments/val_predict.csv'
 
-    # CSV_FILE_Y_TRUE = './test_experiments2/test_predicted.csv'
-    # CSV_FILE_Y_PRED = './test_predicted_random.csv'
+    # CSV_FILE_Y_TRUE = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_label.csv'#'/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation.csv'
+    # CSV_FILE_Y_PRED = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_label.csv'
+
+    CSV_FILE_Y_TRUE = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/test3_val/val_true.csv'
+    CSV_FILE_Y_PRED = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/test3_val/val_predicted.csv'
 
     df_y_true = pd.read_csv(CSV_FILE_Y_TRUE, index_col=0, sep=',')
     df_y_pred = pd.read_csv(CSV_FILE_Y_PRED, index_col=0, sep=',')
