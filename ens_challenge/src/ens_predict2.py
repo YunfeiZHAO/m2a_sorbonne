@@ -117,10 +117,11 @@ def val(checkpoint_path, batch_size, tensorboard_dir, result_save_path, val_csv_
 
 if __name__ == '__main__':
     root = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/'
-    test_name = 'test3_predict'
-    val_name = 'test3_val'
-    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test3/checkpoint_epoch30.pth'
+    test_name = 'test5_predict'
+    val_name = 'test5_val'
+    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test5/checkpoint_epoch78.pth'
     batch_size = 8
+    Path(os.path.join(root, Path(f'experiments/{test_name}'))).mkdir(parents=True, exist_ok=True)
     test(checkpoint_path=checkpoint_path,
          batch_size=batch_size,
          tensorboard_dir=os.path.join(root, Path(f'experiments/{test_name}')),

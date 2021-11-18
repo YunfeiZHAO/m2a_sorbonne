@@ -12,7 +12,7 @@ def UNet(input_shape,
          num_layers=4):
     """
     Creates a U-Net model (Ronneberger et al 2015)
-    Architecture adapted from github.com/karolzak/keras-unet/master/keras_unet/models/satellite_unet.py
+    Architecture adapted from github.com/karolzak/keras-unet/master/keras_unet/setr/satellite_unet.py
     """
 
     def bn_conv_relu(input, filters, **conv2d_kwargs):
