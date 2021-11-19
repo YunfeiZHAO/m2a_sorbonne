@@ -115,7 +115,6 @@ def forward_vit(pretrained, x):
     layer_2 = pretrained.act_postprocess2[0:2](layer_2)
     layer_3 = pretrained.act_postprocess3[0:2](layer_3)
     layer_4 = pretrained.act_postprocess4[0:2](layer_4)
-
     unflatten = nn.Sequential(
         nn.Unflatten(
             2,
@@ -498,8 +497,8 @@ def _make_pretrained_vitb_rn50_384(
     enable_attention_hooks=False,
 ):
     model = timm.create_model("vit_base_resnet50_384", pretrained=pretrained)
-    ################ I change channel to 4 here
-    model.patch_embed.backbone.stem.conv = nn.Conv2d(4, 64, kernel_size=(7, 7), stride=(2, 2), bias=False)
+    ################ I change channel to 4 here #########################
+    model.patch_embed.backbone.stem.conv = nn.Conv2d(4, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False) # padding to have 64
     hooks = [0, 1, 8, 11] if hooks == None else hooks
     return _make_vit_b_rn50_backbone(
         model,

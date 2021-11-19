@@ -12,6 +12,7 @@ from tifffile import TiffFile
 
 import torch
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -270,9 +271,12 @@ def split_dataset(origin_csv, train_path, val_path, ratio=0.8):
 
 
 # split_dataset('./train_images.csv', './train_index.csv', './val_index.csv', ratio=0.8)
-data = SatelliteDataset('/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/train_index.csv',
+val_set = SatelliteDataset('/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/val_index.csv',
                         images_folder_path='/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset/',
-                        type='train')
-sample = data.__getitem__(1)
-image, mask = data.visualisation(20)
+                        type='val')
+loader_args = dict(batch_size=8, num_workers=4, pin_memory=True)
+val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+
+# sample = val_loader.__getitem__(1)
+# image, mask = val_loader.visualisation(20)
 
