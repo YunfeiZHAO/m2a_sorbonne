@@ -66,7 +66,7 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
             # predicted class ratio by sum of each channel
 
             masks_pred_prob = prob_softmax(masks_pred)
-            batch_ratio = torch.sum( , (-2, -1))  # B, 10
+            batch_ratio = torch.sum(masks_pred_prob, (-2, -1))  # B, 10
             batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
             batch_ratio = batch_ratio.cpu()
             predict_labels = torch.cat((predict_labels, batch_ratio))
