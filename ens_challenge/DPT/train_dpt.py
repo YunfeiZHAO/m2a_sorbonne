@@ -237,7 +237,7 @@ if __name__ == '__main__':
     # Change here to adapt to your data
     # Use DPT
     net = DPTSegmentationModel(
-        150,
+        10,
         path=None,
         backbone="vitb_rn50_384",
     )
