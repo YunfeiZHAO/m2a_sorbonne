@@ -22,7 +22,7 @@ def evaluate(net, dataloader, device):
     all_image_ids = torch.tensor([])
     true_labels = torch.tensor([])
     predict_labels = torch.tensor([])
-
+    prob_softmax = torch.nn.Softmax(dim=1)
     # iterate over the validation set
     for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         image_ids, image, mask_true, ratio_label = batch['image_id'], batch['image'], batch['mask'], batch['label']
@@ -38,9 +38,9 @@ def evaluate(net, dataloader, device):
 
         # predict the mask
         mask_pred = net(image)  # B, C, h, w
-
-        # predicted class ratio by sum of each channel
-        batch_ratio = torch.sum(mask_pred, (-2, -1))  # B, C
+        # generate loss for ratio
+        masks_pred_prob = prob_softmax(mask_pred)
+        batch_ratio = torch.sum(masks_pred_prob, (-2, -1))  # B, 10
         batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
         batch_ratio = batch_ratio.cpu()
         predict_labels = torch.cat((predict_labels, batch_ratio))
