@@ -54,6 +54,8 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
     # results
     predict_labels = torch.tensor([])
     all_image_ids = torch.tensor([])
+    prob_softmax = torch.nn.Softmax(dim=1)  # on class dimension
+
     with tqdm(total=dataset.__len__(), desc=f'Testing dataset', unit='img') as pbar:
         for batch in data_loader:
             images = batch['image'].to(device=device)
@@ -62,7 +64,9 @@ def evaluate(dataset, weight, batch_size, tensorboard_dir, result_save_path, wri
             final_mask = torch.argmax(masks_pred, dim=1).float().cpu()
 
             # predicted class ratio by sum of each channel
-            batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, C
+
+            masks_pred_prob = prob_softmax(masks_pred)
+            batch_ratio = torch.sum( , (-2, -1))  # B, 10
             batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
             batch_ratio = batch_ratio.cpu()
             predict_labels = torch.cat((predict_labels, batch_ratio))
@@ -117,9 +121,9 @@ def val(checkpoint_path, batch_size, tensorboard_dir, result_save_path, val_csv_
 
 if __name__ == '__main__':
     root = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/'
-    test_name = 'test5_predict'
-    val_name = 'test5_val'
-    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test5/checkpoint_epoch78.pth'
+    test_name = 'test6_predict'
+    val_name = 'test6_val'
+    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test6/checkpoint_epoch73.pth'
     batch_size = 8
     Path(os.path.join(root, Path(f'experiments/{test_name}'))).mkdir(parents=True, exist_ok=True)
     test(checkpoint_path=checkpoint_path,
@@ -127,6 +131,7 @@ if __name__ == '__main__':
          tensorboard_dir=os.path.join(root, Path(f'experiments/{test_name}')),
          result_save_path=os.path.join(root, Path(f'experiments/{test_name}/test_predicted.csv')))
 
+    # Path(os.path.join(root, Path(f'experiments/{val_name}'))).mkdir(parents=True, exist_ok=True)
     # val(checkpoint_path=checkpoint_path,
     #     batch_size=batch_size,
     #     tensorboard_dir=os.path.join(root, Path(f'experiments/{val_name}')),

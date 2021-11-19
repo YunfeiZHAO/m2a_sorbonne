@@ -39,6 +39,8 @@ def evaluate(net, dataloader, device):
         mask_pred = net(image)  # B, C, h, w
 
         # predicted class ratio by sum of each channel
+
+
         batch_ratio = torch.sum(mask_pred, (-2, -1))  # B, C
         batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
         batch_ratio = batch_ratio.cpu()

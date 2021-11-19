@@ -79,7 +79,7 @@ def train_net(net,
     # optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
     optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.995)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.99)
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
     global_step = 0
@@ -111,6 +111,7 @@ def train_net(net,
                 with torch.cuda.amp.autocast(enabled=amp):
                     # predict mask and calculate ratio
                     masks_pred = net(images)  # B, C, h, w
+
                     batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, 10
                     batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
                     # generate loss for ratios and masks
