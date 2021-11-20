@@ -192,7 +192,6 @@ def train_net(net,
             writer.add_scalar('Train/Epoch_loss', epoch_loss, start_epoch+epoch)
 
         if save_checkpoint:
-            Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             torch.save({
                 'epoch': start_epoch+epoch,
                 'model_state_dict': net.state_dict(),
@@ -229,11 +228,12 @@ if __name__ == '__main__':
 
     # for tensorboard visualisation
     args.tensorboard_dir = os.path.join(root, Path(f'experiments/{run_name}'))
+    Path(args.tensorboard_dir).mkdir(parents=True, exist_ok=True)
     # for saving checkpoints
     args.dir_checkpoint = os.path.join(root, Path(f'checkpoints/{run_name}'))
+    Path(args.dir_checkpoint).mkdir(parents=True, exist_ok=True)
 
     # (Initialize tensor board logging)
-    Path(args.tensorboard_dir).mkdir(parents=True, exist_ok=True)
     writer = SummaryWriter(log_dir=args.tensorboard_dir)
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
