@@ -1,6 +1,7 @@
 """
 Predict the targets using a trained model.
 """
+import os
 from pathlib import Path
 import argparse
 import yaml
@@ -104,7 +105,7 @@ def _parse_args():
 
 
 if __name__ == '__main__':
-
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     import multiprocessing
 
     config = _parse_args()
@@ -136,7 +137,6 @@ if __name__ == '__main__':
     # assert that samples are loaded in the right order (not shuffled)
     # for idx, (f, tensor) in enumerate(zip(test_files, test_dataset)):
     #     assert f == str(bytes.decode(tensor.numpy()))
-
     test_dataset = test_dataset.map(parse_image, num_parallel_calls=N_CPUS)\
         .map(load_image_test, num_parallel_calls=N_CPUS)\
         .repeat(1)\
