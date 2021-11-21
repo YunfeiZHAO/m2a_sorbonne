@@ -121,20 +121,20 @@ def val(checkpoint_path, batch_size, tensorboard_dir, result_save_path, val_csv_
 
 if __name__ == '__main__':
     root = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/'
-    test_name = 'test6_predict'
-    val_name = 'test6_val'
-    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test6/checkpoint_epoch73.pth'
-    batch_size = 8
+    test_name = 'test7_predict'
+    val_name = 'test7_val'
+    checkpoint_path = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test7/checkpoint_epoch40.pth'
+    batch_size = 6
     Path(os.path.join(root, Path(f'experiments/{test_name}'))).mkdir(parents=True, exist_ok=True)
     test(checkpoint_path=checkpoint_path,
          batch_size=batch_size,
          tensorboard_dir=os.path.join(root, Path(f'experiments/{test_name}')),
          result_save_path=os.path.join(root, Path(f'experiments/{test_name}/test_predicted.csv')))
 
-    # Path(os.path.join(root, Path(f'experiments/{val_name}'))).mkdir(parents=True, exist_ok=True)
-    # val(checkpoint_path=checkpoint_path,
-    #     batch_size=batch_size,
-    #     tensorboard_dir=os.path.join(root, Path(f'experiments/{val_name}')),
-    #     result_save_path=os.path.join(root, Path(f'experiments/{val_name}/val_predicted.csv')),
-    #     val_csv_path=os.path.join(root, 'train_labels.csv'),
-    #     new_csv_truth_path=os.path.join(root, Path(f'experiments/{val_name}/val_true.csv')))
+    Path(os.path.join(root, Path(f'experiments/{val_name}'))).mkdir(parents=True, exist_ok=True)
+    val(checkpoint_path=checkpoint_path,
+        batch_size=batch_size,
+        tensorboard_dir=os.path.join(root, Path(f'experiments/{val_name}')),
+        result_save_path=os.path.join(root, Path(f'experiments/{val_name}/val_predicted.csv')),
+        val_csv_path=os.path.join(root, 'train_labels.csv'),
+        new_csv_truth_path=os.path.join(root, Path(f'experiments/{val_name}/val_true.csv')))
