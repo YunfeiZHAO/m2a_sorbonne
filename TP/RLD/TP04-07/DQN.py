@@ -24,6 +24,7 @@ class DQN(object):
     """Deep Q-Networl with experience replay"""
     def __init__(self, env, opt):
         self.opt = opt
+        print(opt)
         self.env = env
         if opt.fromFile is not None:
             self.load(opt.fromFile)
@@ -36,20 +37,20 @@ class DQN(object):
         self.eps = opt.eps
 
         # Definition of replay memory D
-        self.D = Memory(opt.mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
         action_feature_size = self.action_space.n
-        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[100, 200, 100])
+        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[200], activation=torch.tanh)
         with torch.no_grad():
             self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
         self.loss = F.smooth_l1_loss
 
         # Optimiser
-        self.lr = opt.lr
-        self.optim = torch.optim.Adam(self.Q.parameters(), lr=self.lr)
+        self.lr = float(opt.lr)
+        self.optim = torch.optim.SGD(self.Q.parameters(), lr=self.lr)
         self.optim.zero_grad()
 
     def act(self, obs):
@@ -80,13 +81,14 @@ class DQN(object):
             mask, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
             column_mini_batch = list(zip(*mini_batch))
             obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
+            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
+
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
 
             y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
-
-            q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # B
+            q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, 2
             output = self.loss(y_batch, q_batch)
             logger.direct_write("Loss", output, i)
             output.backward()
@@ -97,7 +99,7 @@ class DQN(object):
         """enregistrement de la transition pour exploitation par learn ulterieure"""
         # Si l'agent est en mode de test, on n'enregistre pas la transition
         if not self.test:
-            # si on atteint la taille max d'episode en apprentissage,
+            # si on atteint la taille max d'episode en apprentis
             # alors done ne devrait pas etre a true (episode pas vraiment fini dans l'environnement)
             if it == self.opt.maxLengthTrain:
                 print("undone")
@@ -121,9 +123,9 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
-    # env, config, outdir, logger = init('./configs/config_random_gridworld.yaml', "DQN")
-    # env, config, outdir, logger = init('./configs/config_random_lunar.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_DQN_gridworld.yaml', "DQN")
+    env, config, outdir, logger = init('./configs/config_DQN_lunar.yaml', "DQN")
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
@@ -131,14 +133,7 @@ if __name__ == '__main__':
     env.seed(config["seed"])
     np.random.seed(config["seed"])
     episode_count = config["nbEpisodes"]
-    config["mem_size"] = 10000
-    config["mini_batch_size"] = 100
-    config["eps"] = 0.1
-    # optimisation step
-    config["C"] = 20
-    config["discount"] = 0.999
-    config["decay"] = 0.99999
-    config["lr"] = 3e-4
+
     # Agent
     agent = DQN(env, config)
     rsum = 0
@@ -208,6 +203,8 @@ if __name__ == '__main__':
                     agent.Q_target.load_state_dict(agent.Q.state_dict())
 
             if done:
+                if verbose:
+                    env.render()
                 print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
                 logger.direct_write("reward", rsum, i)
                 agent.nbEvents = 0
