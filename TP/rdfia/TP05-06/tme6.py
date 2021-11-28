@@ -1,20 +1,20 @@
 import matplotlib.pyplot as plt
 plt.ion()
 import numpy as np
+import yaml
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)
-
     _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    pred = pred.t()  # maxk, batch_size
+    correct = pred.eq(target.view(1, -1).expand_as(pred))  # copy target to much pred, get boolean matrix maxk, batch_size
 
     res = []
     for k in topk:
         correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.mul_(100.0 / batch_size))
+        res.append(correct_k.mul_(100.0 / batch_size)) # add all true and divide by batch size
     return res
 
 class AverageMeter(object):
@@ -90,3 +90,22 @@ class AccLossPlot(object):
         plt.show()
         plt.draw_all()
         plt.pause(1e-3)
+
+
+class DotDict(dict):
+    """dot.notation access to dictionary attributes (Thomas Robert)"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
+def load_yaml(path):
+    with open(path, 'r') as stream:
+        opt = yaml.load(stream, Loader=yaml.Loader)
+    return DotDict(opt)
+
+
+def write_yaml(file, dotdict):
+    d = dict(dotdict)
+    with open(file, 'w', encoding='utf8') as outfile:
+        yaml.dump(d, outfile, default_flow_style=False, allow_unicode=True)
