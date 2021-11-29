@@ -37,7 +37,7 @@ class DQN(object):
         self.eps = opt.eps
 
         # Definition of replay memory D
-        self.D = Memory(opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize

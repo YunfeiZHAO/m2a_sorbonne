@@ -34,12 +34,13 @@ class A2C(object):
         self.featureExtractor = opt.featExtractor(env)
         self.test = False
         self.nbEvents = 0
+        self.nbTrajectory = 0
         self.discount = config["discount"]
         self.decay = config["decay"]
         self.eps = opt.eps
 
         # Definition of replay memory D
-        self.D = Memory(self.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
@@ -92,12 +93,15 @@ class A2C(object):
             y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
             q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, 2
             output = self.loss(y_batch, q_batch)
-            logger.direct_write("Loss", output, i)
+            logger.direct_write("Loss", output, episode)
             output.backward()
             self.optim.step()
             self.optim.zero_grad()
+
+
             # buffer reset after policy update
-            self.D = Memory(self.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
+            self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
+            self.nbTrajectory = 0
 
     def store(self, ob, action, new_ob, reward, done, it):
         """enregistrement de la transition pour exploitation par learn ulterieure"""
@@ -120,8 +124,9 @@ class A2C(object):
         # Mais on pourrait retourner vrai seulement si done pour s'entraîner seulement en fin d'episode
         if self.test:
             return False
-        self.nbEvents += 1
-        return self.nbEvents % self.opt.freqOptim == 0
+        if done:
+            self.nbTrajectory += 1
+        return (self.nbTrajectory % self.opt.freqOptimTrajectory == 0) and (self.nbTrajectory > 0)
 
 
 if __name__ == '__main__':
@@ -146,36 +151,36 @@ if __name__ == '__main__':
     itest = 0
     reward = 0
     done = False
-    for i in range(episode_count):
+    for episode in range(episode_count):
         checkConfUpdate(outdir, config)
         rsum = 0
         agent.nbEvents = 0
         ob = env.reset()
 
         # On souhaite afficher l'environnement (attention à ne pas trop afficher car ça ralentit beaucoup)
-        if i % int(config["freqVerbose"]) == 0:
+        if episode % int(config["freqVerbose"]) == 0:
             verbose = True
         else:
             verbose = False
 
         # C'est le moment de tester l'agent
-        if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
+        if episode % freqTest == 0 and episode >= freqTest:  ##### Same as train for now
             print("Test time! ")
             mean = 0
             agent.test = True
 
         # On a fini cette session de test
-        if i % freqTest == nbTest and i > freqTest:
+        if episode % freqTest == nbTest and episode > freqTest:
             print("End of test, mean reward=", mean / nbTest)
             itest += 1
             logger.direct_write("rewardTest", mean / nbTest, itest)
             agent.test = False
 
         # C'est le moment de sauver le modèle
-        if i % freqSave == 0:
-            agent.save(outdir + "/save_" + str(i))
+        if episode % freqSave == 0:
+            agent.save(outdir + "/save_" + str(episode))
 
-        j = 0  # steps in an episode
+        n_step = 0  # steps in an episode
         if verbose:
             env.render()
 
@@ -190,27 +195,27 @@ if __name__ == '__main__':
             new_ob, reward, done, _ = env.step(action)
             new_ob = agent.featureExtractor.getFeatures(new_ob)
 
-            j += 1
+            n_step += 1
 
             # Si on a atteint la longueur max définie dans le fichier de config
-            if ((config["maxLengthTrain"] > 0) and (not agent.test) and (j == config["maxLengthTrain"])) or \
-                    ((agent.test) and (config["maxLengthTest"] > 0) and (j == config["maxLengthTest"])):
+            if ((config["maxLengthTrain"] > 0) and (not agent.test) and (n_step == config["maxLengthTrain"])) or \
+                    ((agent.test) and (config["maxLengthTest"] > 0) and (n_step == config["maxLengthTest"])):
                 done = True
                 print("forced done!")
 
-            agent.store(ob, action, new_ob, reward, done, j)
+            agent.store(ob, action, new_ob, reward, done, n_step)
             rsum += reward
 
             if agent.timeToLearn(done):
                 agent.learn()
-                if i % config['C'] == 0:
+                if episode % config['C'] == 0:
                     agent.Q_target.load_state_dict(agent.Q.state_dict())
 
             if done:
                 if verbose:
                     env.render()
-                print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
-                logger.direct_write("reward", rsum, i)
+                print(str(episode) + " rsum=" + str(rsum) + ", " + str(n_step) + " actions ")
+                logger.direct_write("reward", rsum, episode)
                 agent.nbEvents = 0
                 mean += rsum
                 rsum = 0
