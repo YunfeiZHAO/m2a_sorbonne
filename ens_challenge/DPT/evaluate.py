@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from tqdm import tqdm
@@ -37,19 +38,17 @@ def evaluate(net, dataloader, device):
 
         # predict the mask
         mask_pred = net(image)  # B, C, h, w
-
-        # predicted class ratio by sum of each channel
-
-
-        batch_ratio = torch.sum(mask_pred, (-2, -1))  # B, C
-        batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
-        batch_ratio = batch_ratio.cpu()
-        predict_labels = torch.cat((predict_labels, batch_ratio))
+        final_mask = torch.argmax(mask_pred, dim=1) # B, h, w
+        one_hot_final_mask = F.one_hot(final_mask, num_classes=10) # B, h, w, 10
+        class_count = one_hot_final_mask.sum(dim=(1,2)) # B, 10
+        class_ratio = class_count/class_count.sum(dim=-1)[..., None] # B, 10
+        class_ratio = class_ratio.float().cpu()
+        predict_labels = torch.cat((predict_labels, class_ratio))
 
         # crossentropy_loss on mask
         val_crossentropy_loss_mask += mask_crossentropy(mask_pred, mask_true).float().cpu()
         # crossentropy_loss on ratio
-        val_crossentropy_loss_ratio += ratio_crossentropy(batch_ratio, ratio_label)
+        # val_crossentropy_loss_ratio += ratio_crossentropy(batch_ratio, ratio_label)
 
 
     write_label_csv(all_image_ids, predict_labels, '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_predict_labels.csv')
@@ -60,7 +59,7 @@ def evaluate(net, dataloader, device):
     kl_loss = calculate_kl_loss(predict_labels[:, 2:10], true_labels[:, 2:10])
     net.train()
 
-    return val_crossentropy_loss_mask, val_crossentropy_loss_ratio, kl_loss
+    return val_crossentropy_loss_mask, kl_loss
 
 
 # if __name__ == '__main__':

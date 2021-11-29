@@ -14,10 +14,15 @@ dataset_folder: '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/dataset'
 xp_rootdir: '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/chengcheng/'
 # the name of log directory for an experiment (result of training)
 # you can set to 'last' to refer to the lastly created directory under in <xp_rootdir>
-xp_name: 'epoch48'
+
+xp_name: '20-11-2021_13:50:59'
+
 # the set to perform inference on: 'train', 'test' or 'val'
 # note: 'train' mean all train samples with the ones in validation excluded, and 'val' mean the ones in validation
 set: 'test'
 # the output prediction for the set will be saved to a file 'epoch<checkpoint_epoch>_<set>_predicted.csv' in the experiment directory
 # the epoch number for the model checkpoint to load and perform prediction with
+
 checkpoint_epoch: 48
+
+

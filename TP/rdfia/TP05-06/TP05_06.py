@@ -1,6 +1,8 @@
 import argparse
 import os
 import time
+from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
 
 import torch
 import torch.nn as nn
@@ -10,35 +12,43 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+import torch.optim.lr_scheduler
 
 from tme6 import *
 
 PRINT_INTERVAL = 200
-PATH="datasets"
+
 
 class ConvNet(nn.Module):
     """
-    This class defines the structure of the neural network
+    This class defines the structure of the neural network by annonce of tme
     """
 
     def __init__(self):
         super(ConvNet, self).__init__()
         # We first define the convolution and pooling layers as a features extractor
         self.features = nn.Sequential(
-            nn.Conv2d(1, 6, (5, 5), stride=1, padding=2),
-            nn.Tanh(),
+            nn.Conv2d(3, 32, (5, 5), stride=1, padding=2),
+            nn.ReLU(),
             nn.MaxPool2d((2, 2), stride=2, padding=0),
-            nn.Conv2d(6, 16, (5, 5), stride=1, padding=0),
-            nn.Tanh(),
+            nn.BatchNorm2d(32),
+
+            nn.Conv2d(32, 64, (5, 5), stride=1, padding=2),
+            nn.ReLU(),
             nn.MaxPool2d((2, 2), stride=2, padding=0),
+            nn.BatchNorm2d(64),
+
+            nn.Conv2d(64, 64, (5, 5), stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2), stride=2, padding=0, ceil_mode=True),  # add ceiling to make 7*7 to 4*4
+            nn.BatchNorm2d(64)
         )
         # We then define fully connected layers as a classifier
         self.classifier = nn.Sequential(
-            nn.Linear(400, 120),
-            nn.Tanh(),
-            nn.Linear(120, 84),
-            nn.Tanh(),
-            nn.Linear(84, 10)
+            nn.Linear(1024, 1000),
+            nn.ReLU(),
+            nn.Dropout(p=0.5, inplace=True),
+            nn.Linear(1000, 10)
             # Reminder: The softmax is included in the loss, do not put it here
         )
 
@@ -51,19 +61,29 @@ class ConvNet(nn.Module):
         return output
 
 
-def get_dataset(batch_size, cuda=False):
+def get_dataset(batch_size, path, cuda=False):
     """
     This function loads the dataset and performs transformations on each
     image (listed in `transform = ...`).
     """
-    train_dataset = datasets.MNIST(PATH, train=True, download=True,
-                                   transform=transforms.Compose([
-                                       transforms.ToTensor()
-                                   ]))
-    val_dataset = datasets.MNIST(PATH, train=False, download=True,
-                                 transform=transforms.Compose([
-                                     transforms.ToTensor()
-                                 ]))
+    train_transforms = transforms.Compose([
+        transforms.ToTensor(),  # Transform the PIL image to a torch.Tensor
+        transforms.Normalize(mean=(0.491, 0.482, 0.447), std=(0.202, 0.199, 0.201), inplace=True), # mean and std for each channel (total 3 channels)
+        transforms.RandomCrop((28,28), padding=None, pad_if_needed=False, fill=0, padding_mode='constant'),
+        transforms.RandomHorizontalFlip(p=0.5)
+    ])
+
+    test_transforms = transforms.Compose([
+        transforms.ToTensor(),  # Transform the PIL image to a torch.Tensor
+        transforms.Normalize(mean=(0.491, 0.482, 0.447), std=(0.202, 0.199, 0.201), inplace=True), # mean and std for each channel (total 3 channels)
+        transforms.CenterCrop((28,28))
+    ])
+
+
+    train_dataset = datasets.CIFAR10(path, train=True, download=True,
+                                     transform=train_transforms)
+    val_dataset = datasets.CIFAR10(path, train=False, download=True,
+                                   transform=test_transforms)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=batch_size, shuffle=True, pin_memory=cuda, num_workers=2)
@@ -90,12 +110,10 @@ def epoch(data, model, criterion, optimizer=None, cuda=False):
     avg_top1_acc = AverageMeter()
     avg_top5_acc = AverageMeter()
     avg_batch_time = AverageMeter()
-    global loss_plot
 
     # we iterate on the batches
     tic = time.time()
     for i, (input, target) in enumerate(data):
-
         if cuda:  # only with GPU, and not with CPU
             input = input.cuda()
             target = target.cuda()
@@ -121,7 +139,7 @@ def epoch(data, model, criterion, optimizer=None, cuda=False):
         avg_top5_acc.update(prec5.item())
         avg_batch_time.update(batch_time)
         if optimizer:
-            loss_plot.update(avg_loss.val)
+            writer.add_scalar('Train batch loss', avg_loss.val, i+1)
         # print info
         if i % PRINT_INTERVAL == 0:
             print('[{0:s} Batch {1:03d}/{2:03d}]\t'
@@ -131,8 +149,7 @@ def epoch(data, model, criterion, optimizer=None, cuda=False):
                   'Prec@5 {top5.val:5.1f} ({top5.avg:5.1f})'.format(
                 "EVAL" if optimizer is None else "TRAIN", i, len(data), batch_time=avg_batch_time, loss=avg_loss,
                 top1=avg_top1_acc, top5=avg_top5_acc))
-            if optimizer:
-                loss_plot.plot()
+    writer.add_graph(model, input)
 
     # Print summary
     print('\n===============> Total time {batch_time:d}s\t'
@@ -145,37 +162,57 @@ def epoch(data, model, criterion, optimizer=None, cuda=False):
     return avg_top1_acc, avg_top5_acc, avg_loss
 
 
-def main(batch_size=128, lr=0.1, epochs=5, cuda=False):
-    # ex :
-    #   {"batch_size": 128, "epochs": 5, "lr": 0.1}
-
+def main(params):
     # define model, loss, optim
     model = ConvNet()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr)
+    optimizer = torch.optim.SGD(model.parameters(), params.lr, params.momentum)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=params.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    global lr_sched
+    lr_sched = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=params.scheduler_gamma)
 
-    if cuda:  # only with GPU, and not with CPU
+    if params.cuda:  # si on fait du GPU, passage en CUDA
         cudnn.benchmark = True
         model = model.cuda()
         criterion = criterion.cuda()
+    # On récupère les données
+    train, test = get_dataset(params.batch_size, params.path, params.cuda)
 
-    # Get the data
-    train, test = get_dataset(batch_size, cuda)
-
-    # init plots
-    plot = AccLossPlot()
-    global loss_plot
-    loss_plot = TrainLossPlot()
-
-    # We iterate on the epochs
-    for i in range(epochs):
+    # On itère sur les epochs
+    for i in range(params.epochs):
         print("=================\n=== EPOCH " + str(i + 1) + " =====\n=================\n")
-        # Train phase
-        top1_acc, avg_top5_acc, loss = epoch(train, model, criterion, optimizer, cuda)
-        # Test phase
-        top1_acc_test, top5_acc_test, loss_test = epoch(test, model, criterion, cuda=cuda)
-        # plot
-        plot.update(loss.avg, loss_test.avg, top1_acc.avg, top1_acc_test.avg)
+        # Phase de train
+        top1_acc, avg_top5_acc, loss = epoch(train, model, criterion, optimizer, cuda=params.cuda)
+        # Phase d'evaluation
+        top1_acc_test, top5_acc_test, loss_test = epoch(test, model, criterion, cuda=params.cuda)
+        # change learning rate
+        writer.add_scalar('lr', lr_sched.get_last_lr()[0], i + 1)
+        lr_sched.step()
+        # tensorboard plot
+        writer.add_scalars('Loss/Epoch train and test LOSS',
+                           {'Train loss': loss.avg,
+                            'Test loss': loss_test.avg},
+                           i + 1)
+
+        writer.add_scalars('Accuracy/Epoch train and test TOP1 ACCURACY',
+                           {'Train top1 accuracy': top1_acc.avg,
+                            'Test top1 accuracy': top1_acc_test.avg},
+                           i + 1)
 
 
-main(128, 0.1, cuda=True)
+if __name__ == '__main__':
+    # Parameters
+    args = load_yaml('configs/cifar-10.yaml')
+
+    # tensorboard
+    now = datetime.now()
+    date_time = now.strftime("%d-%m-%Y-%HH%M-%SS")
+    outdir = "./experiments" + "/" + args.name + "_" + date_time
+    print("Saving in " + outdir)
+    os.makedirs(outdir, exist_ok=True)
+    global writer
+    writer = SummaryWriter(outdir)
+
+    # run main
+    main(args)
+    print("done")

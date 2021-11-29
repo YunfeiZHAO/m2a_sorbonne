@@ -1,0 +1,8 @@
+name: 'cifar-cnn-normalised-augmented-dp_fc-BN_cnn_adma'
+path: /tmp/datasets/cifar-10 # path to save dataset
+epochs: 100  # number of epoch
+batch_size: 128
+lr: 0.1
+momentum: 0
+cuda: True
+scheduler_gamma: 1

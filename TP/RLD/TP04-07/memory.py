@@ -59,13 +59,13 @@ class SumTree:
 
 class Memory:
 
-    def __init__(self, mem_size, prior=True,p_upper=1.,epsilon=.01,alpha=1,beta=1):
-        self.p_upper=p_upper
-        self.epsilon=epsilon
-        self.alpha=alpha
-        self.beta=beta
+    def __init__(self, mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1):
+        self.p_upper = p_upper
+        self.epsilon = epsilon
+        self.alpha = alpha
+        self.beta = beta
         self.prior = prior
-        self.nentities=0
+        self.nentities = 0
         #self.dict={}
         #self.data_len = 2 * feature_size + 2
         self.mem_size = mem_size
@@ -87,13 +87,13 @@ class Memory:
             p = self.tree.max_p
             if not p:
                 p = self.p_upper
-            idx=self.tree.store(p, transition)
+            idx = self.tree.store(p, transition)
             self.nentities += 1
             if self.nentities > self.mem_size:
                 self.nentities = self.mem_size
         else:
             self.mem[self.mem_ptr] = transition
-            idx=self.mem_ptr
+            idx = self.mem_ptr
             self.mem_ptr += 1
 
             if self.mem_ptr == self.mem_size:
@@ -106,7 +106,7 @@ class Memory:
     def sample(self, n):
         if self.prior:
             min_p = self.tree.min_p
-            if min_p==0:
+            if min_p == 0:
                 min_p=self.epsilon**self.alpha
             seg = self.tree.total_p / n
             batch = np.zeros(n, dtype=object)
