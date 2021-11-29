@@ -42,7 +42,7 @@ def custom_metric_function(dataframe_y_true, dataframe_y_pred):
 if __name__ == '__main__':
 
     CSV_FILE_Y_TRUE = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_true_labels.csv'
-    CSV_FILE_Y_PRED = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_predict_labels.csv'
+    CSV_FILE_Y_PRED = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/chengcheng/epoch11/epoch11_test_predicted.csv'
 
 
     # CSV_FILE_Y_TRUE = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation_label.csv'#'/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/evaluation.csv'

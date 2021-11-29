@@ -92,12 +92,8 @@ def _parse_args():
     assert config.dataset_folder.is_dir()
     config.xp_rootdir = Path(config.xp_rootdir).expanduser()
     assert config.xp_rootdir.is_dir()
-    if config.xp_name == 'last':
-        # get last xp directory name
-        config.xp_dir = Path(max(str(d) for d in config.xp_rootdir.iterdir() if d.is_dir()))
-    else:
-        config.xp_dir = config.xp_rootdir/config.xp_name
-    assert config.xp_dir.is_dir()
+    config.xp_dir = config.xp_rootdir/config.xp_name
+
     assert config.set in ('train', 'test', 'val')
 
     return config
@@ -144,7 +140,7 @@ if __name__ == '__main__':
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     # Load the trained model saved to disk
-    model = tf.keras.models.load_model(str(config.xp_dir/f'checkpoints/epoch{config.checkpoint_epoch}'))
+    model = tf.keras.models.load_model(str(config.xp_dir))
 
     print(f"Predict the vectors over the {config.set} dataset")
     y_pred = predict_as_vectors(model, test_dataset, steps=testset_size // config.batch_size)
