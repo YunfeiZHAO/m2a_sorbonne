@@ -78,8 +78,9 @@ def train_net(net,
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     # optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
-    optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.995)
+    # optimizer = optim.Adam(net.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.996)
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
     global_step = 0
@@ -90,7 +91,7 @@ def train_net(net,
     class_weight = torch.tensor(np.append(np.zeros(2), class_weight), dtype=torch.float)
     logging.info(f"Will use class weights: {class_weight}, type: {type(class_weight)}")
     criterion_mask = nn.CrossEntropyLoss(weight=class_weight).to(device)
-    criterion_kl = torch.nn.KLDivLoss()
+    # criterion_kl = torch.nn.KLDivLoss()
 
     # 5. Begin training
     for epoch in range(epochs):
@@ -101,21 +102,22 @@ def train_net(net,
                 images, true_masks, true_ratios = batch['image'], batch['mask'], batch['label']
                 images = images.to(device=device, dtype=torch.float32)
                 true_masks = true_masks.to(device=device, dtype=torch.long)  # B, h, w
-                true_ratios = true_ratios.to(device=device, dtype=torch.float32)  # B, 10
+                # true_ratios = true_ratios.to(device=device, dtype=torch.float32)  # B, 10
                 # Loss
 
                 with torch.cuda.amp.autocast(enabled=amp):
                     # predict mask and calculate ratio
 
                     masks_pred = net(images)  # B, C, h, w
+                    loss = criterion_mask(masks_pred, true_masks)
                     # writer.add_graph(net, images)
 
-                    batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, 10
-                    batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
+                    # batch_ratio = torch.sum(masks_pred, (-2, -1))  # B, 10
+                    # batch_ratio /= torch.sum(batch_ratio, 1)[..., None]
                     # generate loss for ratios and masks
-                    loss_mask = criterion_mask(masks_pred, true_masks)
-                    kl_loss_ratio = criterion_kl(batch_ratio.softmax(dim=-1).log(), true_ratios)
-                    loss = loss_mask + kl_loss_ratio * 10
+                    # loss_mask = criterion_mask(masks_pred, true_masks)
+                    # kl_loss_ratio = criterion_kl(batch_ratio.softmax(dim=-1).log(), true_ratios)
+                    # loss = loss_mask + kl_loss_ratio * 10
 
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
@@ -125,65 +127,58 @@ def train_net(net,
                 pbar.update(images.shape[0])
                 global_step += 1
                 epoch_loss += loss.item()
-                writer.add_scalar('Train batch/mask loss', loss_mask.item(), global_step)
-                writer.add_scalar('Train batch/ratio kl loss', kl_loss_ratio.item(), global_step)
+                # writer.add_scalar('Train batch/mask loss', loss_mask.item(), global_step)
+                # writer.add_scalar('Train batch/ratio kl loss', kl_loss_ratio.item(), global_step)
                 writer.add_scalar('Train batch/total loss', loss.item(), global_step)
 
                 # Evaluation round
-                with torch.no_grad():
-                    division_step = 60 * batch_size
-                    # division_step = 1  # for debugging
-                    if division_step > 0:
-                        if global_step % division_step == 0:
-                            for tag, value in net.named_parameters():
-                                tag = tag.replace('/', '.')
-                                writer.add_histogram('Weights/' + tag, value.data.cpu(), start_epoch+epoch)
-                                writer.add_histogram('Gradients/' + tag, value.grad.data.cpu(), start_epoch+epoch)
+        with torch.no_grad():
+                        # # division_step = 60 * batch_size
+                        # division_step = 4  # for debugging
+                        # if division_step > 0:
+                        #     if global_step % division_step == 0:
+            val_crossentropy_loss_mask, kl_loss = evaluate(net, val_loader, device)
+            # for debug
+            # val_score = torch.tensor(0.3081, device='cuda:0')
+            scheduler.step()
+            indice = start_epoch+epoch
+            logging.info('Validation kl_loss: {}'.format(kl_loss))
+            writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], indice)
+            writer.add_scalar('Evaluation/validation mask crossentropy loss',
+                              val_crossentropy_loss_mask, indice)
+            writer.add_scalar('Evaluation/validation kl score', kl_loss, indice)
 
-                            val_crossentropy_loss_mask, val_crossentropy_loss_ratio, kl_loss = evaluate(net, val_loader, device)
-                            # for debug
-                            # val_score = torch.tensor(0.3081, device='cuda:0')
-                            scheduler.step()
+            # For this training batch
+            i = randrange(len(batch['image_id']))
+            image_id = batch['image_id'][i]
+            # image: B, 4, H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
+                             dataformats='CHW')
+            # true_masks: B, H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-true_mask', show_mask(true_masks[i]).float().cpu(), 0,
+                             dataformats='HWC')
+            # masks_pred: B, C=10, H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-predicted_mask',
+                             show_mask(torch.argmax(masks_pred[i], dim=0)).float().cpu(), 0, dataformats='HWC')
 
-                            logging.info('Validation kl_loss: {}'.format(kl_loss))
-                            writer.add_scalar('Evaluation/learning rate', optimizer.param_groups[0]['lr'], global_step)
-                            writer.add_scalar('Evaluation/validation mask crossentropy loss',
-                                              val_crossentropy_loss_mask, global_step)
-                            writer.add_scalar('Evaluation/validation ratio crossentropy loss',
-                                              val_crossentropy_loss_ratio, global_step)
-                            writer.add_scalar('Evaluation/validation kl score', kl_loss, global_step)
+            # For random image in validation set
+            j = randrange(n_val)
+            val_sample = val_set.__getitem__(j)
+            image_id = val_sample['image_id']
+            image = val_sample['image'].unsqueeze(dim=0).to(device=device, dtype=torch.float32)
+            true_mask = val_sample['mask']
+            masks_pred = net(image)
+            # image: 4, H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-val_image', show_image(image[0]).float().cpu(), 0,
+                             dataformats='CHW')
+            # true_masks: H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-val_true_mask', show_mask(true_mask), 0,
+                             dataformats='HWC')
+            # masks_pred: C=10, H, W
+            writer.add_image(f'Evaluation-indice{indice}/{image_id}-val_predicted_mask',
+                             show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
 
-                            # For this training batch
-                            i = randrange(len(batch['image_id']))
-                            image_id = batch['image_id'][i]
-                            # image: B, 4, H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-image', show_image(images[i]).float().cpu(), 0,
-                                             dataformats='CHW')
-                            # true_masks: B, H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-true_mask', show_mask(true_masks[i]).float().cpu(), 0,
-                                             dataformats='HWC')
-                            # masks_pred: B, C=10, H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-predicted_mask',
-                                             show_mask(torch.argmax(masks_pred[i], dim=0)).float().cpu(), 0, dataformats='HWC')
-
-                            # For random image in validation set
-                            j = randrange(n_val)
-                            val_sample = val_set.__getitem__(j)
-                            image_id = val_sample['image_id']
-                            image = val_sample['image'].unsqueeze(dim=0).to(device=device, dtype=torch.float32)
-                            true_mask = val_sample['mask']
-                            masks_pred = net(image)
-                            # image: 4, H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_image', show_image(image[0]).float().cpu(), 0,
-                                             dataformats='CHW')
-                            # true_masks: H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_true_mask', show_mask(true_mask), 0,
-                                             dataformats='HWC')
-                            # masks_pred: C=10, H, W
-                            writer.add_image(f'Evaluation-global_step{global_step}/{image_id}-val_predicted_mask',
-                                             show_mask(torch.argmax(masks_pred[0], dim=0)).float().cpu(), 0, dataformats='HWC')
-
-        writer.add_scalar('Train/Epoch_loss', epoch_loss, start_epoch+epoch)
+            writer.add_scalar('Train/Epoch_loss', epoch_loss, start_epoch+epoch)
 
         if save_checkpoint:
             torch.save({
@@ -211,14 +206,14 @@ def get_args():
 
 if __name__ == '__main__':
     root = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/'
-    run_name = 'test6'
+    run_name = 'test8'
     # hyper parameters
     args = get_args()
     args.epochs = 100
-    args.batch_size = 8
+    args.batch_size = 6
     args.lr = 0.001
 
-    # args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/test3/checkpoint_epoch20.pth'
+    args.load = '/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/checkpoints/dpt.pth'
 
     # for tensorboard visualisation
     args.tensorboard_dir = os.path.join(root, Path(f'experiments/{run_name}'))
@@ -230,8 +225,8 @@ if __name__ == '__main__':
     writer = SummaryWriter(log_dir=args.tensorboard_dir)
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cpu')
     logging.info(f'Using device {device}')
 
     # Change here to adapt to your data
@@ -245,11 +240,11 @@ if __name__ == '__main__':
     logging.info(f'Network: DPT, dpt_hybrid\n')
 
     start_epoch = 1
-    # if args.load:
-    #     checkpoint = torch.load(args.load, map_location=device)
-    #     net.load_state_dict(checkpoint['model_state_dict'])
-    #     start_epoch = checkpoint['epoch'] + 1
-    #     logging.info(f'Model loaded from {args.load}')
+    if args.load:
+        checkpoint = torch.load(args.load, map_location=device)
+        net.load_state_dict(checkpoint['model_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        logging.info(f'Model loaded from {args.load}')
 
     net.to(device=device)
     try:

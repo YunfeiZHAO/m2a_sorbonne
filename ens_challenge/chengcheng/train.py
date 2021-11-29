@@ -45,7 +45,7 @@ class PlotCallback(tf.keras.callbacks.Callback):
         if self.ipython_mode:
             self.clear_output(wait=True)
         if self.save_folder:
-            save_filepaths = [self.save_folder/'plot_{n}_epoch{epoch}.png' for n in range(1, self.num+1)]
+            save_filepaths = [self.save_folder/f'plot_{n}_epoch{epoch}.png' for n in range(1, self.num+1)]
         else:
             save_filepaths = None
         plot_predictions(self.model, self.dataset, self.sample_batch, num=self.num, save_filepaths=save_filepaths)
@@ -90,19 +90,23 @@ if __name__ == '__main__':
     train_files = random.sample(train_files, len(train_files))
     devset_size = len(train_files)
     # validation set
-    if config.val_samples_csv is not None:
-        # read the validation samples
-        val_samples_s = pd.read_csv(config.val_samples_csv, squeeze=True)
-        val_files = [config.dataset_folder/'train/images/{}.tif'.format(i) for i in val_samples_s]
-        train_files = [f for f in train_files if f not in set(val_files)]
-        valset_size = len(val_files)
-        trainset_size = len(train_files)
-        assert valset_size + trainset_size == devset_size
-    else:
-        # generate a hold-out validation set from the training set
-        valset_size = int(len(train_files) * 0.1)
-        train_files, val_files = train_files[valset_size:], train_files[:valset_size]
-        trainset_size = len(train_files) - valset_size
+    # if config.val_samples_csv is not None:
+    #     # read the validation samples
+    #     val_samples_s = pd.read_csv(config.val_samples_csv, squeeze=True)
+    #     val_files = [config.dataset_folder/'train/images/{}.tif'.format(i) for i in val_samples_s]
+    #     train_files = [f for f in train_files if f not in set(val_files)]
+    #     valset_size = len(val_files)
+    #     trainset_size = len(train_files)
+    #     assert valset_size + trainset_size == devset_size
+    # else:
+    #     # generate a hold-out validation set from the training set
+    #     valset_size = int(len(train_files) * 0.1)
+    #     train_files, val_files = train_files[valset_size:], train_files[:valset_size]
+    #     trainset_size = len(train_files) - valset_size
+    valset_size = int(len(train_files) * 0.1)
+    train_files, val_files = train_files, train_files[:valset_size]
+    trainset_size = len(train_files)
+
 
     train_dataset = tf.data.Dataset.from_tensor_slices(list(map(str, train_files)))\
         .map(parse_image, num_parallel_calls=N_CPUS)
@@ -159,11 +163,13 @@ if __name__ == '__main__':
         num_layers=2
     )
     print(f"Creating U-Net with arguments: {unet_kwargs}")
-    model = UNet(**unet_kwargs)
+    # model = UNet(**unet_kwargs)
+    model = tf.keras.models.load_model('/home/yunfei/Desktop/m2a_sorbonne/ens_challenge/experiments/chengcheng/20-11-2021_13:50:59/checkpoints/epoch40/')
     print(model.summary())
 
     # get optimizer, loss, and compile model for training
-    optimizer = tf.keras.optimizers.Adam(lr=config.lr)
+    # optimizer = tf.keras.optimizers.Adam(lr=config.lr)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.001, momentum=0.9, nesterov=False, name='SGD')
 
     # compute class weights for the loss: inverse-frequency balanced
     # note: we set to 0 the weights for the classes "no_data"(0) and "clouds"(1) to ignore these

@@ -10,3 +10,19 @@ fromFile: null
 nbEpisodes: 1000000
 maxLengthTrain: 300
 maxLengthTest: 500
+
+mem_size: 10000
+mini_batch_size: 100
+
+# epsilon greedy
+eps: 0.1
+decay: 0.99999
+
+# target network update step
+C: 10
+
+# gamma for temporal differential
+discount: 0.999
+
+# network learning rate
+lr: 3e-4

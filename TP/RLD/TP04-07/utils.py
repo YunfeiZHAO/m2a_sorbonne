@@ -85,12 +85,12 @@ class DotDict(dict):
 
 def load_yaml(path):
     with open(path, 'r') as stream:
-        opt = yaml.load(stream,Loader=yaml.Loader)
+        opt = yaml.load(stream, Loader=yaml.Loader)
     return DotDict(opt)
 
 
-def write_yaml(file,dotdict):
-    d=dict(dotdict)
+def write_yaml(file, dotdict):
+    d = dict(dotdict)
     with open(file, 'w', encoding='utf8') as outfile:
         yaml.dump(d, outfile, default_flow_style=False, allow_unicode=True)
 
