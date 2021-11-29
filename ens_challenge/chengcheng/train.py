@@ -167,10 +167,10 @@ if __name__ == '__main__':
 
     # compute class weights for the loss: inverse-frequency balanced
     # note: we set to 0 the weights for the classes "no_data"(0) and "clouds"(1) to ignore these
-    class_weight_list = (1 / LCD.TRAIN_CLASS_COUNTS)* LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
-    class_weight_list[LCD.IGNORED_CLASSES_IDX] = 0.
-    class_weight = dict(enumerate(class_weight_list))
-    print(f"Will use class weights: {class_weight}")
+    # class_weight_list = (1 / LCD.TRAIN_CLASS_COUNTS)* LCD.TRAIN_CLASS_COUNTS[2:].sum() / (LCD.N_CLASSES-2)
+    # class_weight_list[LCD.IGNORED_CLASSES_IDX] = 0.
+    # class_weight = dict(enumerate(class_weight_list))
+    # print(f"Will use class weights: {class_weight}")
 
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
     print("Compile model")
