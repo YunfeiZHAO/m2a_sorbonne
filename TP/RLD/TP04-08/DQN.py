@@ -42,7 +42,7 @@ class DQN(object):
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
         action_feature_size = self.action_space.n
-        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[200], activation=torch.tanh)
+        self.Q = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[200], activation=torch.nn.Tanh())
         with torch.no_grad():
             self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
@@ -123,9 +123,9 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    # env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
+    env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
     # env, config, outdir, logger = init('./configs/config_DQN_gridworld.yaml', "DQN")
-    env, config, outdir, logger = init('./configs/config_DQN_lunar.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_DQN_lunar.yaml', "DQN")
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]

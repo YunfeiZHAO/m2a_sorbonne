@@ -34,7 +34,6 @@ class A2C(object):
         self.featureExtractor = opt.featExtractor(env)
         self.test = False
         self.nbEvents = 0
-        self.nbTrajectory = 0
         self.discount = config["discount"]
         self.decay = config["decay"]
         self.eps = opt.eps
@@ -45,7 +44,10 @@ class A2C(object):
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
         action_feature_size = self.action_space.n
-        self.V = NN(inSize=state_feature_size, outSize=action_feature_size, layers=[30, 30], activation=torch.tanh)
+        self.V = NN(inSize=state_feature_size, outSize=1, layers=[30, 30], activation=torch.tanh)
+        self.PI = NN(inSize=state_feature_size, outSize=action_feature_size,
+                     layers=[30, 30], activation=torch.nn.Tanh(), finalActivation=torch.nn.Softmax(dim=1))
+
         with torch.no_grad():
             self.V_target = copy.deepcopy(self.V)
         # Definition of loss
@@ -81,16 +83,20 @@ class A2C(object):
             return
         else:
             # get mini_batch a batch of (ob, action, reward, new_ob, done)
-            mask, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
+            # sample (si, ai) from pi_theta
+            mini_batch = self.D.mem  # we take all samples in memory as mini batch
             column_mini_batch = list(zip(*mini_batch))
-            obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
-            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
 
+            obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1)  # B, dim_obs=4
+            action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
-            new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
+            new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1)  # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
 
-            y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
+            # fit V_pi(s)
+            y_batch = r_batch + self.discount * self.V.forward(new_obs_batch) * (1 - done_batch) # if done this term is 0
+
+
             q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, 2
             output = self.loss(y_batch, q_batch)
             logger.direct_write("Loss", output, episode)
@@ -101,7 +107,7 @@ class A2C(object):
 
             # buffer reset after policy update
             self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
-            self.nbTrajectory = 0
+            self.nbEvents = 0
 
     def store(self, ob, action, new_ob, reward, done, it):
         """enregistrement de la transition pour exploitation par learn ulterieure"""
@@ -124,9 +130,8 @@ class A2C(object):
         # Mais on pourrait retourner vrai seulement si done pour s'entraîner seulement en fin d'episode
         if self.test:
             return False
-        if done:
-            self.nbTrajectory += 1
-        return (self.nbTrajectory % self.opt.freqOptimTrajectory == 0) and (self.nbTrajectory > 0)
+        self.nbEvents += 1
+        return self.nbEvents >= self.opt.freqOptim and done
 
 
 if __name__ == '__main__':
