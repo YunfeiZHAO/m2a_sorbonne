@@ -6,24 +6,27 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class RNN(nn.Module):
-    def __init__(self, inputSize, latentSize, outputSize):
+    def __init__(self, input_size, latent_size, output_size):
         super(RNN, self).__init__()
-        self.inputSize = inputSize
-        self.latentSize = latentSize
-        self.outputSize = outputSize
+        # Size
+        self.inputSize = input_size
+        self.latentSize = latent_size
+        self.outputSize = output_size
+        # Encoder
         self.W_i = nn.Linear(self.inputSize, self.latentSize)
         self.W_h = nn.Linear(self.latentSize, self.latentSize)
+        self.encoder_activation = nn.Tanh()
+        # Decoder
         self.linearDecode = nn.Linear(self.latentSize, self.outputSize)
-        self.funActivation = nn.Tanh()
         self.funDecode = nn.Softmax(dim=-1)
 
     def one_step(self, x, h):
-        return self.funActivation(self.W_i(x) + self.W_h(h))
+        if h is None:
+            return self.encoder_activation(self.W_i(x))
+        else:
+            return self.encoder_activation(self.W_i(x) + self.W_h(h))
 
     def forward(self, x, h=None):
-        if h is None:
-            h = torch.zeros(x.shape[1], self.latentSize)
-            
         h_ = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
         for i in range(x.shape[0]):
             h = self.one_step(x[i, :, :], h)
