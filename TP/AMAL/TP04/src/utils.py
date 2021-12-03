@@ -6,7 +6,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size, latent_size, output_size):
+    def __init__(self, input_size, latent_size, output_size,
+                 encoder_activation=nn.Tanh(), decoder_activation=nn.Softmax(dim=-1)):
         super(RNN, self).__init__()
         # Size
         self.inputSize = input_size
@@ -15,26 +16,40 @@ class RNN(nn.Module):
         # Encoder
         self.W_i = nn.Linear(self.inputSize, self.latentSize)
         self.W_h = nn.Linear(self.latentSize, self.latentSize)
-        self.encoder_activation = nn.Tanh()
+        self.encoder_activation = encoder_activation
         # Decoder
         self.linearDecode = nn.Linear(self.latentSize, self.outputSize)
-        self.funDecode = nn.Softmax(dim=-1)
+        self.decoder_activation = decoder_activation
 
     def one_step(self, x, h):
+        """
+        :param x: B, input_size
+        :param h: B,latent_size
+        """
         if h is None:
             return self.encoder_activation(self.W_i(x))
         else:
             return self.encoder_activation(self.W_i(x) + self.W_h(h))
 
     def forward(self, x, h=None):
-        h_ = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
-        for i in range(x.shape[0]):
-            h = self.one_step(x[i, :, :], h)
-            h_[i] = h
-        return h_
+        """
+        :param x: sequence of input: T, B, input_size
+        :param h: initial hidden input: B,latent_size
+        """
+        hidden_outputs = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
+        for i, x_t in enumerate(x):
+            h = self.one_step(x_t, h)
+            hidden_outputs[i] = h
+        return hidden_outputs
 
     def decode(self, h):
-        return self.funDecode(self.linearDecode(h))
+        """ we may not need activation function, because nn.CrossEntropyLoss has softmax
+        :param h: a given batch of hidden output: B, latent_size
+        """
+        if self.decoder_activation is None:
+            return self.linearDecode(h)
+        else:
+            return self.decoder_activation(self.linearDecode(h))
 
 
 class SampleMetroDataset(Dataset):
@@ -47,24 +62,27 @@ class SampleMetroDataset(Dataset):
         self.data, self.length = data, length
         self.stations_max = stations_max
         if self.stations_max is None:
-            ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
-            self.stations_max = torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
-        ## Normalisation des données
+            # Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant of different stations
+            self.stations_max = torch.max(self.data.view(-1, self.data.size(2), self.data.size(3)), 0)[0]
+        # Normalisation des données
         self.data = self.data / self.stations_max
         self.nb_days, self.nb_timeslots, self.classes = self.data.size(0), self.data.size(1), self.data.size(2)
 
     def __len__(self):
-        ## longueur en fonction de la longueur considérée des séquences
-        return self.classes*self.nb_days*(self.nb_timeslots - self.length)
+        # longueur en fonction de la longueur considérée des séquences
+        # si le sequence est plus long, le nombre de sample sera plus petit
+        return self.classes * self.nb_days * (self.nb_timeslots - self.length)
 
-    def __getitem__(self,i):
-        ## transformation de l'index 1d vers une indexation 3d
-        ## renvoie une séquence de longueur length et l'id de la station.
-        station = i // ((self.nb_timeslots-self.length) * self.nb_days)
+    def __getitem__(self, i):
+        """ transformation de l'index 1d vers une indexation 3d (station, timeslot, day)
+        :return: renvoie une séquence de longueur length et l'id de la station.
+        """
+        station = i // ((self.nb_timeslots-self.length) * self.nb_days) # take value from 0 to classes
         i = i % ((self.nb_timeslots-self.length) * self.nb_days)
-        timeslot = i // self.nb_days
-        day = i % self.nb_days
-        return self.data[day,timeslot:(timeslot+self.length),station],station
+
+        timeslot = i // self.nb_days  # take value from 0 to nb_timeslots - length (53 if length = 20)
+        day = i % self.nb_days  # take value from 0-18 for train
+        return self.data[day, timeslot:(timeslot+self.length), station], station
 
 
 class ForecastMetroDataset(Dataset):
@@ -93,3 +111,25 @@ class ForecastMetroDataset(Dataset):
         day = i % self.nb_days
         return self.data[day, timeslot:(timeslot+self.length-1)], self.data[day, (timeslot+1):(timeslot+self.length)]
 
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, keep_all=False):
+        self.reset()
+        self.data = None
+        if keep_all:
+            self.data = []
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        if self.data is not None:
+            self.data.append(val)
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
