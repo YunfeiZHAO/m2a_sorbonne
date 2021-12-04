@@ -1,0 +1,12 @@
+name: exo2_rnn_hangzhou_20_all.yaml
+# Nombre de stations utilisé
+CLASSES: 80
+#Longueur des séquences
+LENGTH: 20
+# Dimension de l'entrée (1 (in) ou 2 (in/out))
+DIM_INPUT: 2
+#Taille du batch
+BATCH_SIZE: 32
+
+epoch: 1000
+device: 'cpu'

@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+import yaml
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size, latent_size, output_size,
+    def __init__(self, input_size, latent_size, output_size, device,
                  encoder_activation=nn.Tanh(), decoder_activation=nn.Softmax(dim=-1)):
         super(RNN, self).__init__()
         # Size
@@ -20,6 +22,8 @@ class RNN(nn.Module):
         # Decoder
         self.linearDecode = nn.Linear(self.latentSize, self.outputSize)
         self.decoder_activation = decoder_activation
+
+        self.device = device
 
     def one_step(self, x, h):
         """
@@ -36,11 +40,12 @@ class RNN(nn.Module):
         :param x: sequence of input: T, B, input_size
         :param h: initial hidden input: B,latent_size
         """
-        hidden_outputs = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
+        # hidden_outputs = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
+        self.register_buffer('hidden_outputs', torch.zeros((x.shape[0], x.shape[1], self.latentSize), device=self.device), persistent=False)
         for i, x_t in enumerate(x):
             h = self.one_step(x_t, h)
-            hidden_outputs[i] = h
-        return hidden_outputs
+            self.hidden_outputs[i] = h
+        return self.hidden_outputs
 
     def decode(self, h):
         """ we may not need activation function, because nn.CrossEntropyLoss has softmax
@@ -77,7 +82,7 @@ class SampleMetroDataset(Dataset):
         """ transformation de l'index 1d vers une indexation 3d (station, timeslot, day)
         :return: renvoie une séquence de longueur length et l'id de la station.
         """
-        station = i // ((self.nb_timeslots-self.length) * self.nb_days) # take value from 0 to classes
+        station = i // ((self.nb_timeslots-self.length) * self.nb_days)  # take value from 0 to classes
         i = i % ((self.nb_timeslots-self.length) * self.nb_days)
 
         timeslot = i // self.nb_days  # take value from 0 to nb_timeslots - length (53 if length = 20)
@@ -133,3 +138,16 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+class DotDict(dict):
+    """dot.notation access to dictionary attributes (Thomas Robert)"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
+def load_yaml(path):
+    with open(path, 'r') as stream:
+        opt = yaml.load(stream, Loader=yaml.Loader)
+    return DotDict(opt)
