@@ -1,5 +1,5 @@
 #  TODO:  Question 3 : Prédiction de séries temporelles
-from utils import RNN, device,  ForecastMetroDataset
+from utils import RNN,  ForecastMetroDataset
 
 from torch.utils.data import  DataLoader
 import torch
