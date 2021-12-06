@@ -8,7 +8,6 @@ class SumTree:
         self.ptr = 0
         self.nentities=0
 
-
     def update(self, idx, p):
         tree_idx = idx + self.size - 1
         diff = p - self.tree[tree_idx]
@@ -107,7 +106,7 @@ class Memory:
         if self.prior:
             min_p = self.tree.min_p
             if min_p == 0:
-                min_p=self.epsilon**self.alpha
+                min_p = self.epsilon**self.alpha
             seg = self.tree.total_p / n
             batch = np.zeros(n, dtype=object)
             w = np.zeros((n, 1), np.float32)
@@ -135,16 +134,16 @@ class Memory:
 
     def getNextIdx(self):
         if self.prior:
-            ptr=self.tree.getNextIdx()
+            ptr = self.tree.getNextIdx()
         else:
-            ptr=self.mem_ptr
+            ptr = self.mem_ptr
         return ptr
 
-    def getData(self,idx):
+    def getData(self, idx):
         if idx >=self.nentities:
             return None
         if self.prior:
-            data=self.tree.data[idx]
+            data = self.tree.data[idx]
         else:
-            data=self.mem[idx]
+            data = self.mem[idx]
         return data

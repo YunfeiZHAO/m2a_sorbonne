@@ -37,7 +37,7 @@ class DQN(object):
         self.eps = opt.eps
 
         # Definition of replay memory D
-        self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
+        self.D = Memory(self.opt.mem_size, prior=True, p_upper=1., epsilon=.01, alpha=1, beta=1)
         # Definition of Q and Q_hat
         # NN is defined in utils.py
         state_feature_size = self.featureExtractor.outSize
@@ -46,8 +46,7 @@ class DQN(object):
         with torch.no_grad():
             self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
-        self.loss = F.smooth_l1_loss
-
+        self.loss = nn.SmoothL1Loss()
         # Optimiser
         self.lr = float(opt.lr)
         self.optim = torch.optim.SGD(self.Q.parameters(), lr=self.lr)
@@ -87,10 +86,11 @@ class DQN(object):
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
 
-            y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), axis=-1).values * (1 - done_batch) # if done this term is 0
+            y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), dim=-1).values * (1 - done_batch) # if done this term is 0
             q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, 2
+
             output = self.loss(y_batch, q_batch)
-            logger.direct_write("Loss", output, i)
+            logger.direct_write("Loss", output, i_episode)
             output.backward()
             self.optim.step()
             self.optim.zero_grad()
@@ -105,7 +105,13 @@ class DQN(object):
                 print("undone")
                 done = False
             tr = (ob, action, reward, new_ob, done)
-            self.D.store(tr)
+            index = self.D.store(tr)
+            ob = torch.tensor([ob])
+            new_ob = torch.tensor([new_ob])
+            y = reward + self.discount * torch.max(self.Q_target(new_ob), dim=-1).values * (1 - done)
+            q = self.Q(ob).view(-1).gather(0, torch.unsqueeze(torch.tensor(action, dtype=torch.int64), 0)).squeeze(0)
+            tderr = torch.abs_(y - q).detach().numpy()
+            self.D.update([index], tderr)
             # ici on n'enregistre que la derniere transition pour traitement immédiat,
             # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
             self.lastTransition = tr
@@ -127,6 +133,7 @@ if __name__ == '__main__':
     # env, config, outdir, logger = init('./configs/config_DQN_gridworld.yaml', "DQN")
     # env, config, outdir, logger = init('./configs/config_DQN_lunar.yaml', "DQN")
 
+    print(config)
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
     nbTest = config["nbTest"]
@@ -142,34 +149,33 @@ if __name__ == '__main__':
     itest = 0
     reward = 0
     done = False
-    for i in range(episode_count):
+    for i_episode in range(episode_count):
         checkConfUpdate(outdir, config)
         rsum = 0
-        agent.nbEvents = 0
         ob = env.reset()
 
         # On souhaite afficher l'environnement (attention à ne pas trop afficher car ça ralentit beaucoup)
-        if i % int(config["freqVerbose"]) == 0:
+        if agent.nbEvents % int(config["freqVerbose"]) == 0:
             verbose = True
         else:
             verbose = False
 
         # C'est le moment de tester l'agent
-        if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
+        if i_episode % freqTest == 0 and i_episode >= freqTest:  ##### Same as train for now
             print("Test time! ")
             mean = 0
             agent.test = True
 
         # On a fini cette session de test
-        if i % freqTest == nbTest and i > freqTest:
+        if i_episode % freqTest == nbTest and i_episode > freqTest:
             print("End of test, mean reward=", mean / nbTest)
             itest += 1
             logger.direct_write("rewardTest", mean / nbTest, itest)
             agent.test = False
 
         # C'est le moment de sauver le modèle
-        if i % freqSave == 0:
-            agent.save(outdir + "/save_" + str(i))
+        if i_episode % freqSave == 0:
+            agent.save(outdir + "/save_" + str(i_episode))
 
         j = 0  # steps in an episode
         if verbose:
@@ -199,15 +205,14 @@ if __name__ == '__main__':
 
             if agent.timeToLearn(done):
                 agent.learn()
-                if i % config['C'] == 0:
+                if agent.nbEvents % config['C'] == 0:
                     agent.Q_target.load_state_dict(agent.Q.state_dict())
 
             if done:
                 if verbose:
                     env.render()
-                print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
-                logger.direct_write("reward", rsum, i)
-                agent.nbEvents = 0
+                print(str(i_episode) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
+                logger.direct_write("reward", rsum, i_episode)
                 mean += rsum
                 rsum = 0
                 break
