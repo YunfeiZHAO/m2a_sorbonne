@@ -1,4 +1,5 @@
-name: exo4_rnn_trump.yaml
+name: exo5_gnu_trump.yaml
+model: gnu
 # max length of a sentence
 maxlen: 100  # max in data is 809
 # max number of phrase
