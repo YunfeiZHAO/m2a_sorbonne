@@ -19,20 +19,22 @@ def generate(rnn, eos, start="", maxlen=200):
 
     #  TODO:  Implémentez la génération à partir du RNN, et d'une fonction decoder qui renvoie les logits
     #    (logarithme de probabilité à une constante près, i.e. ce qui vient avant le softmax) des différentes sorties possibles
-    phrase = ""
+    phrase = "" + start
     if start == "":
         input = torch.tensor([[0]])  # T=1, B=1
     else:
         input = string2code(start)[..., None]
     for i in range(maxlen):
         hiden_output = rnn(input)
-        prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))  # T=1, B=1, d=97(number of Caracters)
+        prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))  # T=1, d=97(number of Caracters)
         input = torch.multinomial(prob[0][0], 1, replacement=True)
         if input == eos:
             break
-        phrase += id2lettre(input)
+        phrase += id2lettre[input.item()]
         input = input[..., None]
+    print('Generator: multinomial')
     print(phrase)
+    return phrase
 
 
 def generate_beam(rnn, eos, k, start="", maxlen=200):
@@ -53,24 +55,30 @@ def generate_beam(rnn, eos, k, start="", maxlen=200):
         input = 0  # T=1, B=1
     else:
         input = lettre2id[start]
-    sequences = [[list(input), 0.0]]
+    sequences = [[list([input]), 0.0]]
 
     # walk over each step in sequence
     for i in range(maxlen):
         all_candidates = list()
         # expand each current candidate
         for seq, score in sequences:
-            hiden_output = rnn(torch.tensor(seq[-1])[..., None])
-            prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))[0][0]  # T=1, B=1, d=97(number of Caracters)
-            for c, p in enumerate(prob):
-                candidate = [seq + [c], score - torch.log(p)]  # negative log-likelihood
+            if seq[-1] == eos:
+                candidate = [seq, score]  # negative log-likelihood
                 all_candidates.append(candidate)
+            else:
+                hiden_output = rnn(torch.tensor(seq[-1])[..., None])
+                prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))[0]  # T=1, d=97(number of Caracters)
+                for c, p in enumerate(prob):
+                    candidate = [seq + [c], score - torch.log(p)]  # negative log-likelihood
+                    all_candidates.append(candidate)
         # order all candidates by score
         ordered = sorted(all_candidates, key=lambda tup: tup[1])
         # select k best
         sequences = ordered[:k]
+
+    print('Generator: Beam-search')
     for seq, score in sequences:
-        print(f"{score}：{seq}")
+        print(f"{score}：{code2string(seq)}")
     return sequences
 
 
