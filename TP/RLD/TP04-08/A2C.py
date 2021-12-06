@@ -87,23 +87,28 @@ class A2C(object):
             mini_batch = self.D.mem  # we take all samples in memory as mini batch
             column_mini_batch = list(zip(*mini_batch))
 
+            # s
             obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1)  # B, dim_obs=4
+            # a
             action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
+            # r
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
+            # s'
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1)  # B, dim_obs=4
+            # done
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
 
             # fit V_pi(s)
-            y_batch = r_batch + self.discount * self.V.forward(new_obs_batch) * (1 - done_batch) # if done this term is 0
+            y_batch = r_batch + self.discount * self.V.forward(new_obs_batch) * (1 - done_batch)  # if done this term is 0
+            # compute advantage value
+            A = y_batch - self.V.forward(obs_batch)
 
-
-            q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, 2
+            q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1)  # reward self.Q.forward(obs_batch): B, 2
             output = self.loss(y_batch, q_batch)
             logger.direct_write("Loss", output, episode)
             output.backward()
             self.optim.step()
             self.optim.zero_grad()
-
 
             # buffer reset after policy update
             self.D = Memory(self.opt.mem_size, prior=False, p_upper=1., epsilon=.01, alpha=1, beta=1)
@@ -124,7 +129,7 @@ class A2C(object):
             # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
             self.lastTransition = tr
 
-    def timeToLearn(self, done):
+    def time_to_learn(self, done):
         # retoune vrai si c'est le moment d'entraîner l'agent.
         # Dans cette version retourne vrai tous les freqoptim evenements
         # Mais on pourrait retourner vrai seulement si done pour s'entraîner seulement en fin d'episode
@@ -211,7 +216,7 @@ if __name__ == '__main__':
             agent.store(ob, action, new_ob, reward, done, n_step)
             rsum += reward
 
-            if agent.timeToLearn(done):
+            if agent.time_to_learn(done):
                 agent.learn()
                 if episode % config['C'] == 0:
                     agent.Q_target.load_state_dict(agent.Q.state_dict())

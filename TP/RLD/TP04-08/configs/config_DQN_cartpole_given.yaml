@@ -15,17 +15,17 @@ mem_size: 10000
 mini_batch_size: 100
 
 # epsilon greedy
-eps: 0.15
+eps: 0.1
 decay: 0.99999
 
 # target network update step
-C: 100
+C: 1000
 
 # gamma for temporal differential
-discount: 0.9
+discount: 0.999
 
 # network learning rate
-lr: 5e-3
+lr: 3e-4
 
 # Optimisation de la politique tous les freqOptim evenements
-freqOptim: 20
+freqOptim: 10
