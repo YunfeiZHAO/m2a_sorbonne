@@ -1,10 +1,10 @@
-name: exo3_rnn_hangzhou_20.yaml
+name: exo3_rnn_hangzhou_20_1dim.yaml
 # Nombre de stations utilisé
 CLASSES: 10
 #Longueur des séquences
 LENGTH: 20
 # Dimension de l'entrée (1 (in) ou 2 (in/out))
-DIM_INPUT: 2
+DIM_INPUT: 1
 DIM_LATENT: 100
 #Taille du batch
 BATCH_SIZE: 32
