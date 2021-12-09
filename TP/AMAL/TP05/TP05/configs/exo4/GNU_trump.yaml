@@ -1,0 +1,14 @@
+name: exo5_gnu_trump.yaml
+model: gnu
+# max length of a sentence
+maxlen: 100  # max in data is 809
+# max number of phrase
+maxsent: 5000 # 17066 totally
+
+DIM_INPUT: 100  # input size of RNN, also the linear layer output size for character projection after one-hot embedding
+DIM_LATENT: 100
+#Taille du batch
+BATCH_SIZE: 32
+
+epoch: 1000
+device: 'cuda'

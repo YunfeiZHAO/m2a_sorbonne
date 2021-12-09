@@ -365,6 +365,63 @@ def main():
         sys.exit(0)
 
 
+def generate_sequence(config_path, checkpoint_path, generator, eos=1, start="", maxlen=200):
+    # config = load_yaml('../configs/exo4/trump.yaml')
+    # config = load_yaml('../configs/exo4/GNU_trump.yaml')
+    # config = load_yaml('../configs/exo4/LSTM_trump.yaml')
+    config = load_yaml(config_path)
+    print(config)
+
+    # Dimension de l'entrée (1 (in) ou 2 (in/out))
+    DIM_INPUT = config.DIM_INPUT
+    # Dim latent
+    DIM_LATENT = config.DIM_LATENT
+
+    device = torch.device('cpu')
+
+    # Model
+    # number of letters in dictionary
+    n_letter = len(lettre2id)
+
+    if config.model == 'rnn':
+        model = RNN(input_size=DIM_INPUT, latent_size=DIM_LATENT, output_size=n_letter, device=device,
+                    num_embeddings=n_letter,
+                    encoder_activation=nn.Tanh())
+    elif config.model == 'gnu':
+        model = GRU(input_size=DIM_INPUT, latent_size=DIM_LATENT, output_size=n_letter, device=device,
+                    num_embeddings=n_letter)
+    elif config.model == 'lstm':
+        model = LSTM(input_size=DIM_INPUT, latent_size=DIM_LATENT, output_size=n_letter, device=device,
+                     num_embeddings=n_letter)
+    print(model)
+    model.load_state_dict(torch.load(checkpoint_path))
+    model = model.to(device)
+    model.eval()
+    if generator == 'multinomial':
+        phrases = generate(rnn=model, eos=eos, start=start, maxlen=maxlen)
+    if generator == 'beam':
+        phrases = generate_beam(rnn=model, eos=eos, k=10, start=start, maxlen=maxlen)
+
+    return phrases
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
+    #                   generator='multinomial', eos=1, start="", maxlen=200)
+    # generate_sequence(config_path='../configs/exo4/GNU_trump.yaml', checkpoint_path='./exo5_gnu_trump.yaml.pth',
+    #                   generator='multinomial', eos=1, start="f", maxlen=200)
+    # generate_sequence(config_path='../configs/exo4/LSTM_trump.yaml', checkpoint_path='./exo5_lstm_trump.yaml.pth',
+    #                   generator='multinomial', eos=1, start="", maxlen=200)
+
+    # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
+    #                   generator='beam', eos=1, start="f", maxlen=200)
+
+    # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
+    #                   generator='beam', eos=1, start="f", maxlen=200)
+    # generate_sequence(config_path='../configs/exo4/GNU_trump.yaml', checkpoint_path='./exo5_gnu_trump.yaml.pth',
+    #                   generator='beam', eos=1, start="o", maxlen=50)
+    # generate_sequence(config_path='../configs/exo4/LSTM_trump.yaml', checkpoint_path='./exo5_lstm_trump.yaml.pth',
+    #                   generator='beam', eos=1, start="k", maxlen=50)
+    pass
 
