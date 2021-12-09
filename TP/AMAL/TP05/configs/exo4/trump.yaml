@@ -1,4 +1,5 @@
 name: exo4_rnn_trump.yaml
+model: rnn
 # max length of a sentence
 maxlen: 100  # max in data is 809
 # max number of phrase
@@ -10,4 +11,4 @@ DIM_LATENT: 100
 BATCH_SIZE: 32
 
 epoch: 1000
-device: 'cuda'
+device: 'cpu'

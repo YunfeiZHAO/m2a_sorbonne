@@ -35,6 +35,8 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
+from torch.utils.tensorboard import SummaryWriter
+
 """# Part 1 : VGG16 Architecture"""
 
 # !wget https://github.com/cdancette/deep-learning-polytech-tp6-7/raw/master/tp8/imagenet_classes.pkl
@@ -96,7 +98,7 @@ def vgg16_simple_feature_map():
 
     def get_activation(name):
         def hook(model, input, output):
-            activation[name] = output.detach().numpy() # transformation to array numpy
+            activation[name] = output.detach().numpy()  # transformation to array numpy
         return hook
 
     vgg16.features[0].register_forward_hook(get_activation('conv0'))
@@ -108,17 +110,19 @@ def vgg16_simple_feature_map():
 
     y = vgg16(t(x))
 
+    img_grid = torchvision.utils.make_grid(images)
+    return y, activation
     # convs = list(vgg16.children())
     # conv1 = list(convs[0].children())[0]
     # conv1_output = conv1(t(x)).squeeze(0)
     #
-    x_len = 8
-    y_len = 8
-    fig, axes = plt.subplots(x_len, y_len, figsize=(10, 10))
-    axes = axes.flatten()
-    for i in range(x_len * y_len):
-        axes[i].imshow(conv1_output.detach().permute(1, 2, 0)[:, :, i])
-    plt.show()
+    # x_len = 8
+    # y_len = 8
+    # fig, axes = plt.subplots(x_len, y_len, figsize=(10, 10))
+    # axes = axes.flatten()
+    # for i in range(x_len * y_len):
+    #     axes[i].imshow(conv1_output.detach().permute(1, 2, 0)[:, :, i])
+    # plt.show()
 
 """# Part 2: Transfer Learning with VGG16 on 15 Scene"""
 
