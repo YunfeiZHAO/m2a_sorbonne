@@ -63,11 +63,11 @@ def accuracy(prediction, target):
 
 
 if __name__ == '__main__':
-    # config = load_yaml('../configs/rnn_hangzhou_20.yaml')
-    # config = load_yaml('../configs/rnn_hangzhou_sequence.yaml')
-    # config = load_yaml('../configs/rnn_hangzhou_20_all.yaml')
+    # config = load_yaml('../configs/exo2/rnn_hangzhou_20.yaml')
+    # config = load_yaml('../configs/exo2/rnn_hangzhou_sequence.yaml')
+    # config = load_yaml('../configs/exo2/rnn_hangzhou_20_all.yaml')
     # config = load_yaml('../configs/exo2/rnn_hangzhou_sequence_all.yaml')
-    config = load_yaml('../configs/exo2/rnn_hangzhou_sequence_all.yaml')
+    config = load_yaml('../configs/exo2/rnn_hangzhou_sequence_1dim.yaml')
     print(config)
     # Nombre de stations utilisé
     CLASSES = config.CLASSES

@@ -66,8 +66,13 @@ def generate_beam(rnn, eos, k, start="", maxlen=200):
                 candidate = [seq, score]  # negative log-likelihood
                 all_candidates.append(candidate)
             else:
+<<<<<<< HEAD
                 hiden_output = rnn(torch.tensor(seq[-1]).reshape((1,1)))
                 prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))[0][0]  # T=1, d=97(number of Caracters)
+=======
+                hiden_output = rnn(torch.tensor(seq[-1])[..., None])
+                prob = rnn.decode(hiden_output, decoder_activation=nn.Softmax(dim=-1))[0]  # T=1, d=97(number of Caracters)
+>>>>>>> 408e2e722655602fc4d9df139188cd6c14978f58
                 for c, p in enumerate(prob):
                     candidate = [seq + [c], score - torch.log(p)]  # negative log-likelihood
                     all_candidates.append(candidate)

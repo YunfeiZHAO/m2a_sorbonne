@@ -1,20 +1,21 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 import yaml
-
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size, latent_size, output_size, device,
+    def __init__(self, input_size, latent_size, output_size, device, embedding_size=None,
                  encoder_activation=nn.Tanh(), decoder_activation=nn.Softmax(dim=-1)):
         super(RNN, self).__init__()
         # Size
         self.inputSize = input_size
         self.latentSize = latent_size
         self.outputSize = output_size
+        self.embeddingSize = embedding_size
         # Encoder
         self.W_i = nn.Linear(self.inputSize, self.latentSize)
         self.W_h = nn.Linear(self.latentSize, self.latentSize)
@@ -22,8 +23,10 @@ class RNN(nn.Module):
         # Decoder
         self.linearDecode = nn.Linear(self.latentSize, self.outputSize)
         self.decoder_activation = decoder_activation
-
         self.device = device
+        # Embedding
+        if self.embeddingSize:
+            self.embedding = nn.Linear(self.embeddingSize, self.inputSize)
 
     def one_step(self, x, h):
         """
@@ -40,8 +43,13 @@ class RNN(nn.Module):
         :param x: sequence of input: T, B, input_size
         :param h: initial hidden input: B,latent_size
         """
-        # hidden_outputs = torch.zeros((x.shape[0], x.shape[1], self.latentSize))
-        self.register_buffer('hidden_outputs', torch.zeros((x.shape[0], x.shape[1], self.latentSize), device=self.device), persistent=False)
+        if self.embeddingSize:
+            x = F.one_hot(x, self.embeddingSize).type(torch.float)
+            x = self.embedding(x)
+        hidden_size = list(x.size())
+        hidden_size[-1] = self.latentSize
+        self.register_buffer('hidden_outputs', torch.zeros(tuple(hidden_size), device=self.device), persistent=False)
+
         for i, x_t in enumerate(x):
             h = self.one_step(x_t, h)
             self.hidden_outputs[i] = h
@@ -97,10 +105,11 @@ class ForecastMetroDataset(Dataset):
             * length : longueur des séquences d'exemple
             * stations_max : normalisation à appliquer
         """
-        self.data, self.length = data,length
-        if stations_max is None:
+        self.data, self.length = data, length
+        self.stations_max = stations_max
+        if self.stations_max is None:
             ## Si pas de normalisation passée en entrée, calcul du max du flux entrant/sortant
-            self.stations_max = torch.max(self.data.view(-1,self.data.size(2),self.data.size(3)),0)[0]
+            self.stations_max = torch.max(self.data.view(-1, self.data.size(2), self.data.size(3)), 0)[0]
         ## Normalisation des données
         self.data = self.data / self.stations_max
         self.nb_days, self.nb_timeslots, self.classes = self.data.size(0), self.data.size(1), self.data.size(2)
