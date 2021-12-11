@@ -17,132 +17,133 @@ from matplotlib import pyplot as plt
 import yaml
 from datetime import datetime
 import copy
-from torch.distributions import Categorical,Normal
+from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.optim as optim
 
 
-
 class Policy(nn.Module):
-    def __init__(self,state_dim,action_dim,action_scale,hidden_dim=256):
-        super(Policy,self).__init__()
+    def __init__(self, state_dim, action_dim, action_scale, hidden_dim=256):
+        super(Policy, self).__init__()
 
-        self.linear1=nn.Linear(state_dim,hidden_dim)
-        #self.bn1=nn.BatchNorm1d(hidden_dim)
-        self.linear2=nn.Linear(hidden_dim,hidden_dim)
-        #self.bn2=nn.BatchNorm1d(hidden_dim)
+        self.linear1 = nn.Linear(state_dim, hidden_dim)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.bn2 = nn.BatchNorm1d(hidden_dim)
 
-        self.mean=nn.Linear(hidden_dim,action_dim)
-        self.log_std=nn.Linear(hidden_dim,action_dim)
+        self.mean = nn.Linear(hidden_dim, action_dim)
+        self.log_std = nn.Linear(hidden_dim, action_dim)
 
-        self.action_scale=action_scale
+        self.action_scale = action_scale
 
-    def forward(self,state):
-        x=F.leaky_relu(self.linear1(state))
-        x=F.leaky_relu(self.linear2(x))
+    def forward(self, state):
+        x = F.leaky_relu(self.linear1(state))
+        x = F.leaky_relu(self.linear2(x))
 
-        mean=self.mean(x)
-        log_std=self.log_std(x)
-        log_std=torch.clamp(log_std,-20,2)
+        mean = self.mean(x)
+        log_std = self.log_std(x)
+        log_std = torch.clamp(log_std, -20, 2)
 
-        return mean,log_std
+        return mean, log_std
 
-    def getAction(self,state):
+    def getAction(self, state):
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        # sample action
+        z = normal.rsample()
+        action = self.action_scale*torch.tanh(z)  # entre -1 et 1
+        # calculate entropy
+        log_prob = Normal(mean, std).log_prob(z) - torch.log(self.action_scale*(1-torch.tanh(z).pow(2)) + 1e-6)
+        log_prob = torch.sum(log_prob, dim=1, keepdim=True)
+        return action, log_prob
 
-        mean,log_std=self.forward(state)
-        std=log_std.exp()
-        normal=Normal(mean,std)
-        z=normal.rsample()
-        action=self.action_scale*torch.tanh(z)
-        log_prob=Normal(mean,std).log_prob(z)-torch.log(self.action_scale*(1-torch.tanh(z).pow(2))+1e-6)
-        log_prob=torch.sum(log_prob,dim=1,keepdim=True)
-
-        return action,log_prob
 
 class QNetwork(nn.Module):
-    def __init__(self,state_dim,action_dim,hidden_dim=256):
-        super(QNetwork,self).__init__()
+    def __init__(self, state_dim, action_dim, hidden_dim=256):
+        super(QNetwork, self).__init__()
+        # Q1
+        self.Q1 = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, 1)
+        )
+        # Q2
+        self.Q2 = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, 1)
+        )
 
-        self.linear1=nn.Linear(state_dim+action_dim,hidden_dim)
-        #self.bn1=nn.BatchNorm1d(hidden_dim)
-        self.linear2=nn.Linear(hidden_dim,hidden_dim)
-        self.bn2=nn.BatchNorm1d(hidden_dim)
-        self.linear3=nn.Linear(hidden_dim,1)
-
-        self.linear4=nn.Linear(state_dim+action_dim,hidden_dim)
-        #self.bn4=nn.BatchNorm1d(hidden_dim)
-        self.linear5=nn.Linear(hidden_dim,hidden_dim)
-        #self.bn5=nn.BatchNorm1d(hidden_dim)
-        self.linear6=nn.Linear(hidden_dim,1)
-
-    def forward(self,state,action):
-        x=torch.cat((state,action),dim=1)
-
-        x1=F.leaky_relu(self.linear1(x))
-        x1=F.leaky_relu(self.linear2(x1))
-        x1=self.linear3(x1)
-
-        x2=F.leaky_relu(self.linear4(x))
-        x2=F.leaky_relu(self.linear5(x2))
-        x2=self.linear6(x2)
-
-        return x1,x2
-
+    def forward(self, state, action):
+        x = torch.cat((state, action), dim=1)
+        # forward for Q1
+        x1 = self.Q1(x)
+        # forward for Q2
+        x2 = self.Q2(x)
+        return x1, x2
 
 
 class SAC(object):
     """The world's simplest agent!"""
 
     def __init__(self, env, opt):
-        self.opt=opt
-        self.env=env
+        self.opt = opt
+        self.env = env
         if opt.fromFile is not None:
             self.load(opt.fromFile)
         self.action_space = env.action_space
         self.featureExtractor = opt.featExtractor(env)
-        self.test=False
-        self.nbEvents=0
+        self.test = False
+        self.nbEvents = 0
         
-        self.ob_dim=env.observation_space.shape[0]
-        self.action_size=env.action_space.shape[0]
-        self.action_scale=env.action_space.high[0]
-        self.device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.ob_dim = env.observation_space.shape[0]
+        self.action_size = env.action_space.shape[0]
+        self.action_scale = env.action_space.high[0]
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.actor = Policy(self.ob_dim, self.action_size,self.action_scale,hidden_dim=256).to(self.device)
+        self.actor = Policy(self.ob_dim, self.action_size, self.action_scale, hidden_dim=256).to(self.device)
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=opt.lr_a)
 
-        self.Q_local = QNetwork(self.ob_dim, self.action_size,hidden_dim=256).to(self.device)
+        self.Q_local = QNetwork(self.ob_dim, self.action_size, hidden_dim=256).to(self.device)
         self.Q_optimizer = optim.Adam(self.Q_local.parameters(), lr=opt.lr_c)
-        self.Q_target=copy.deepcopy(self.Q_local)
+        self.Q_target = copy.deepcopy(self.Q_local)
 
-        self.adaptive=opt.adaptive
+        self.adaptive = opt.adaptive
         self.log_alpha = torch.tensor(np.log(opt.alpha)).to(self.device)
 
         if self.adaptive:
             self.target_entropy = opt.target_entropy
             # self.target_entropy = torch.tensor(-np.prod(env.action_space.shape)).to(self.device)
             self.log_alpha.requires_grad = True
-            self.alpha_optim =optim.Adam([self.log_alpha], lr=opt.lr_alpha)
+            self.alpha_optim = optim.Adam([self.log_alpha], lr=opt.lr_alpha)
 
-        self.actor_loss=None
-        self.critic_loss=None
-        self.alpha_loss=None
+        self.actor_loss = None
+        self.critic_loss = None
+        self.alpha_loss = None
 
-        self.K=opt.K_epochs
-        self.discount=opt.discount
-        self.rho=opt.rho 
-        self.batch_size=opt.batch_size 
+        self.K = opt.K_epochs
+        self.discount = opt.discount
+        self.rho = opt.rho
+        self.batch_size = opt.batch_size
  
-        self.memory=Memory(mem_size=100000)
+        self.memory = Memory(mem_size=100000)
 
     @property
     def alpha(self):
         return self.log_alpha.exp()
 
-   
     def act(self, obs):
-        state = torch.FloatTensor(obs).to(self.device).view(1,-1)
-        action,_=self.actor.getAction(state)
+        state = torch.FloatTensor(obs).to(self.device).view(1, -1)
+        action, _ = self.actor.getAction(state)
     
         return action.cpu().data.numpy().flatten()
 
@@ -170,11 +171,11 @@ class SAC(object):
             done=torch.FloatTensor(batch[4]).view(-1,1).to(self.device)
 
             with torch.no_grad():
-                next_action,next_log_prob= self.actor.getAction(new_ob)
+                next_action, next_log_prob = self.actor.getAction(ob)
                 target_q1,target_q2=self.Q_target(new_ob,next_action)
                 target_q = reward + done * self.discount * (torch.min(target_q1, target_q2) - self.alpha * next_log_prob)
 
-            
+
             q1,q2=self.Q_local(ob,act)
             loss1=F.mse_loss(q1,target_q)
             loss2=F.mse_loss(q2,target_q)
@@ -189,7 +190,7 @@ class SAC(object):
             action,log_prob=self.actor.getAction(ob)
             q1,q2 =self.Q_local(ob,action)
             actor_q=torch.min(q1,q2)
-            actor_loss=torch.mean(   self.alpha.detach()*log_prob  -  actor_q   )
+            actor_loss=torch.mean(   self.alpha.detach()*log_prob - actor_q   )
             self.actor_loss=actor_loss.item()
      
             self.actor_optimizer.zero_grad()
@@ -201,16 +202,13 @@ class SAC(object):
                 alpha_loss = torch.mean(self.alpha * (-log_prob - self.target_entropy).detach() )
                 alpha_loss.backward()
                 self.alpha_optim.step()
-                self.alpha_loss=alpha_loss.item()
+                self.alpha_loss = alpha_loss.item()
 
             for target_param, local_param in zip(self.Q_target.parameters(), self.Q_local.parameters()):
                 target_param.data.copy_((1-self.rho)*local_param.data + self.rho*target_param.data)
 
-            
-
-                
     # enregistrement de la transition pour exploitation par learn ulterieure
-    def store(self,ob, action, new_obs, reward, done, it):
+    def store(self, ob, action, new_obs, reward, done, it):
         # Si l'agent est en mode de test, on n'enregistre pas la transition
         if not self.test:
 
@@ -219,7 +217,7 @@ class SAC(object):
                 print("undone")
                 done=False
            
-            tr=(np.squeeze(ob),action,reward,np.squeeze(new_obs),done)
+            tr = (np.squeeze(ob), action, reward, np.squeeze(new_obs), done)
            
             
             #self.lastTransition=tr #ici on n'enregistre que la derniere transition pour traitement immédiat, mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
@@ -233,10 +231,9 @@ class SAC(object):
         if self.test:
             return False
     
-        self.nbEvents+=1
+        self.nbEvents += 1
         
-        return self.nbEvents%self.opt.freqOptim==0
-
+        return self.nbEvents % self.opt.freqOptim == 0
 
 
 if __name__ == '__main__':
@@ -248,90 +245,90 @@ if __name__ == '__main__':
     np.random.seed(config["seed"])
     episode_count = config["nbEpisodes"]
 
-    agent = SAC(env,config)
-    rsum = 0
-    mean = 0
-    verbose = True
-    itest = 0
-    reward = 0
-    done = False
-    for i in range(episode_count):
-        checkConfUpdate(outdir, config)
-
-        rsum = 0
-        #agent.nbEvents = 0
-        ob = env.reset()
-
-        # On souhaite afficher l'environnement (attention à ne pas trop afficher car çà ralentit beaucoup)
-        if i % int(config["freqVerbose"]) == 0:
-            verbose = True
-        else:
-            verbose = False
-
-        # C'est le moment de tester l'agent
-        if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
-            print("Test time! ")
-            mean = 0
-            agent.test = True
-
-        # On a fini cette session de test
-        if i % freqTest == nbTest and i > freqTest:
-            print("End of test, mean reward=", mean / nbTest)
-            itest += 1
-            logger.direct_write("rewardTest", mean / nbTest, itest)
-            agent.test = False
-
-        # C'est le moment de sauver le modèle
-        if i % freqSave == 0:
-            agent.save(outdir + "/save_" + str(i))
-
-        j = 0
-        if verbose:
-            #env.render()
-            pass
-
-        new_obs = agent.featureExtractor.getFeatures(ob)
-        
-        while True:
-            if verbose:
-              pass
-                #env.render()
-
-            ob = new_obs
-            if i < 1000:
-                action = env.action_space.sample()
-            else:
-               action= agent.act(ob)
-            
-            new_obs, reward, done, _ = env.step(action)
-            reward/=100
-
-            #new_obs = agent.featureExtractor.getFeatures(new_obs)
-            agent.store(ob, action, new_obs, reward, done,j)
-            
-            j+=1
-
-            # Si on a atteint la longueur max définie dans le fichier de config
-            if ((config["maxLengthTrain"] > 0) and (not agent.test) and (j == config["maxLengthTrain"])) or ( (agent.test) and (config["maxLengthTest"] > 0) and (j == config["maxLengthTest"])):
-                done = True
-                print("forced done!")
-
-            rsum += reward*100
-
-            if agent.timeToLearn(done):
-                agent.learn()
-                logger.direct_write("actor loss", agent.actor_loss, agent.nbEvents)
-                logger.direct_write("critic loss", agent.critic_loss, agent.nbEvents)
-                if agent.adaptive:
-                    logger.direct_write("alpha loss", agent.alpha_loss, agent.nbEvents)
-                    logger.direct_write("alpha", agent.alpha, agent.nbEvents)
-
-            
-            if done:
-                print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
-                logger.direct_write("reward", rsum, i)
-                mean += rsum
-                rsum = 0
-                break
-     
-    env.close()
+    agent = SAC(env, config)
+    #
+    # rsum = 0
+    # mean = 0
+    # verbose = True
+    # itest = 0
+    # reward = 0
+    # done = False
+    # for i in range(episode_count):
+    #     checkConfUpdate(outdir, config)
+    #
+    #     rsum = 0
+    #     #agent.nbEvents = 0
+    #     ob = env.reset()
+    #
+    #     # On souhaite afficher l'environnement (attention à ne pas trop afficher car çà ralentit beaucoup)
+    #     if i % int(config["freqVerbose"]) == 0:
+    #         verbose = True
+    #     else:
+    #         verbose = False
+    #
+    #     # C'est le moment de tester l'agent
+    #     if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
+    #         print("Test time! ")
+    #         mean = 0
+    #         agent.test = True
+    #
+    #     # On a fini cette session de test
+    #     if i % freqTest == nbTest and i > freqTest:
+    #         print("End of test, mean reward=", mean / nbTest)
+    #         itest += 1
+    #         logger.direct_write("rewardTest", mean / nbTest, itest)
+    #         agent.test = False
+    #
+    #     # C'est le moment de sauver le modèle
+    #     if i % freqSave == 0:
+    #         agent.save(outdir + "/save_" + str(i))
+    #
+    #     j = 0
+    #     if verbose:
+    #         env.render()
+    #         pass
+    #
+    #     new_obs = agent.featureExtractor.getFeatures(ob)
+    #
+    #     while True:
+    #         if verbose:
+    #             env.render()
+    #
+    #         ob = new_obs
+    #         if i < 1000:
+    #             action = env.action_space.sample()
+    #         else:
+    #            action= agent.act(ob)
+    #
+    #         new_obs, reward, done, _ = env.step(action)
+    #         reward /= 100
+    #
+    #         #new_obs = agent.featureExtractor.getFeatures(new_obs)
+    #         agent.store(ob, action, new_obs, reward, done,j)
+    #
+    #         j+=1
+    #
+    #         # Si on a atteint la longueur max définie dans le fichier de config
+    #         if ((config["maxLengthTrain"] > 0) and (not agent.test) and (j == config["maxLengthTrain"])) or ( (agent.test) and (config["maxLengthTest"] > 0) and (j == config["maxLengthTest"])):
+    #             done = True
+    #             print("forced done!")
+    #
+    #         rsum += reward*100
+    #
+    #         if agent.timeToLearn(done):
+    #             agent.learn()
+    #             logger.direct_write("actor loss", agent.actor_loss, agent.nbEvents)
+    #             logger.direct_write("critic loss", agent.critic_loss, agent.nbEvents)
+    #             if agent.adaptive:
+    #                 logger.direct_write("alpha loss", agent.alpha_loss, agent.nbEvents)
+    #                 logger.direct_write("alpha", agent.alpha, agent.nbEvents)
+    #
+    #
+    #         if done:
+    #             print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
+    #             logger.direct_write("reward", rsum, i)
+    #             mean += rsum
+    #             rsum = 0
+    #             break
+    #
+    # env.close()
