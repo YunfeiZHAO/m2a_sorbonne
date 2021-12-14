@@ -1,3 +1,5 @@
+import time
+
 import gym
 import gridworld
 
@@ -19,6 +21,7 @@ class PolicyIterationAgent(object):
 
     def train(self):
         i = 0
+        total_i = 0
         while True:
             # v_pi evaluation function for policy self.PI
             v_pi = np.zeros(self.len_states)
@@ -33,6 +36,7 @@ class PolicyIterationAgent(object):
                         new_v_pi[state] += p * (r + self.gamma * v_pi[s_prime])
                 if LA.norm(v_pi - new_v_pi) < self.e:
                     break
+                total_i += 1
                 v_pi = new_v_pi
 
             # Policy update for each state
@@ -45,15 +49,16 @@ class PolicyIterationAgent(object):
                         value += p * (r + self.gamma * v_pi[s_prime])
                     values_a[action] = value
                 new_pi[state] = max(values_a, key=values_a.get)
-            if i % self.display_frequence == 0:
-                print(f"iteration: {i}")
-                print(f"policy: {self.PI}")
-                print(f"value: {v_pi}")
-                self.display_policy()
+            # if i % self.display_frequence == 0:
+            #     print(f"policy iteration: {i}")
+            #     # print(f"policy: {self.PI}")
+            #     # print(f"value: {v_pi}")
+            #     self.display_policy()
             if np.array_equal(new_pi, self.PI):
                 print("Policy converged!")
-                print(f"new policy: {new_pi}")
-                print(f"policy: {self.PI}")
+                # print(f"new policy: {new_pi}")
+                # print(f"policy: {self.PI}")
+                print(f"Total iteration: {total_i}")
                 self.display_policy()
                 break
             self.PI = new_pi
@@ -69,7 +74,7 @@ class PolicyIterationAgent(object):
             rsum += reward
             j += 1
             self.env.render()
-            if done or j > 50:
+            if done or j > 100:
                 print("rsum=" + str(rsum) + ", " + str(j) + " actions")
                 break
 
@@ -80,9 +85,16 @@ class PolicyIterationAgent(object):
 
 if __name__ == '__main__':
     env = gym.make("gridworld-v0")
-    # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -2, 6: -1})
+    # env.setPlan("gridworldPlans/plan1.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan3.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
-    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
+    # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan7.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
+    # env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
+    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
     # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
     env.seed(0)  # Initialise le seed du pseudo-random
     # print(env.action_space)  # Quelles sont les actions possibles
@@ -96,5 +108,7 @@ if __name__ == '__main__':
     # print(transitions)  # dictionnaire des transitions pour l'etat :  {action-> [proba,etat,reward,done]}
 
     # Execution avec un Agent
-    PolicyIterationAgent = PolicyIterationAgent(env, e=1e-8)
+    PolicyIterationAgent = PolicyIterationAgent(env, e=1e-8, display_frequence=20)
     PolicyIterationAgent.train()
+    time.sleep(5)
+

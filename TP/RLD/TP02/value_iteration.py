@@ -31,9 +31,9 @@ class ValueIterationAgent(object):
                     values_a[action] = value
                 new_v[state] = max(values_a.values())
             if LA.norm(v - new_v) < self.e:
-                print(f"iteration: {i}")
                 print("value function converged!")
-                print(f"value: {v}")
+                print(f"iteration: {i}")
+                # print(f"value: {v}")
                 break
             v = new_v
             i += 1
@@ -47,7 +47,7 @@ class ValueIterationAgent(object):
                 values_a[action] = value
             self.PI[state] = max(values_a, key=values_a.get)
 
-        print(f"policy: {self.PI}")
+        # print(f"policy: {self.PI}")
         self.display_policy()
 
     def display_policy(self):
@@ -71,13 +71,16 @@ class ValueIterationAgent(object):
 
 if __name__ == '__main__':
     env = gym.make("gridworld-v0")
-    # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -2, 6: -1})
+    # env.setPlan("gridworldPlans/plan1.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan3.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan7.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
-    env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
+    # env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
+        # env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
     # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
     env.seed(0)  # Initialise le seed du pseudo-random
     # print(env.action_space)  # Quelles sont les actions possibles
