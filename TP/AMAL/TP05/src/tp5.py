@@ -411,22 +411,11 @@ if __name__ == '__main__':
     #                   generator='multinomial', eos=1, start="", maxlen=200)
     # generate_sequence(config_path='../configs/exo4/GNU_trump.yaml', checkpoint_path='./exo5_gnu_trump.yaml.pth',
     #                   generator='multinomial', eos=1, start="f", maxlen=200)
-    # generate_sequence(config_path='../configs/exo4/LSTM_trump.yaml', checkpoint_path='./exo5_lstm_trump.yaml.pth',
-    #                   generator='multinomial', eos=1, start="", maxlen=200)
 
-    # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
-    #                   generator='beam', eos=1, start="f", maxlen=200)
-
-    # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
-    #                   generator='beam', eos=1, start="f", maxlen=200)
-    # generate_sequence(config_path='../configs/exo4/GNU_trump.yaml', checkpoint_path='./exo5_gnu_trump.yaml.pth',
-    #                   generator='beam', eos=1, start="o", maxlen=50)
-    # generate_sequence(config_path='../configs/exo4/LSTM_trump.yaml', checkpoint_path='./exo5_lstm_trump.yaml.pth',
-    #                   generator='beam', eos=1, start="k", maxlen=50)
     generate_sequence(config_path='../configs/exo4/LSTM_trump.yaml', checkpoint_path='./exo5_lstm_trump.yaml.pth',
                       generator='multinomial', eos=1, start="", maxlen=200)
 
     # generate_sequence(config_path='../configs/exo4/trump.yaml', checkpoint_path='./exo4_rnn_trump.yaml.pth',
     #                   generator='beam', eos=1, start="", maxlen=200)
-    pass
+
 

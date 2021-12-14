@@ -2,26 +2,26 @@ env: Pendulum-v0
 seed: 5
 featExtractor: !!python/name:__main__.NothingToDo ''
 freqSave: 1000
-freqTest: 5000
+freqTest: 50000000000  # do not test duw to batch normalisation
 nbTest: 1
-freqVerbose: 100
-freqOptim: 200                                                                    # Optimisation de la politique tous les freqOptim evenements
+freqVerbose: 200
+freqOptim: 1000                                                                    # Optimisation de la politique tous les freqOptim evenements
 fromFile: null
-nbEpisodes: 5000
+nbEpisodes: 5000000
 maxLengthTest: 500                                                                    # Longueur maxi des trajectoires en Test
 maxLengthTrain: 200                                                              # Longueur maxi des trajectoires en Train
 
-
-K_epochs: 30  # number of time to learning (backpropagation time)
-rho: 0.995  # soft update
+# Train
+K_epochs: 10  # number of time to learning (backpropagation time)
+rho: 0.9  # soft update
 discount: 0.99
-batch_size: 128
-lr_a: 0.0001
-lr_c: 0.0001
+lr_a: 0.001
+lr_c: 0.01
 lr_alpha: 0.0003  # temperature
 alpha: 1.
 target_entropy: 0.2  #
 adaptive: True
 
-
-
+# Memory
+buffer_size: 1000000
+batch_size: 300
