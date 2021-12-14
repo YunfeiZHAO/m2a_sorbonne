@@ -1,4 +1,0 @@
-Policy converged!
-Total iteration: 2141
-rsum=0.30000000000000004, 8 actions
-
