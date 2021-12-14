@@ -20,18 +20,18 @@ if __name__ == '__main__':
 
 
     env = gym.make("gridworld-v0")
-    env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
 
     env.seed(0)  # Initialise le seed du pseudo-random
     print(env.action_space)  # Quelles sont les actions possibles
     print(env.step(1))  # faire action 1 et retourne l'observation, le reward, et un done un booleen (jeu fini ou pas)
     env.render()  # permet de visualiser la grille du jeu
     env.render(mode="human") #visualisation sur la console
-    states, mdp = env.getMDP()  # recupere le mdp et la liste d'etats
-    print("Nombre d'etats : ", len(states))
-    state, transitions = list(mdp.items())[0]
-    print(state)  # un etat du mdp
-    print(transitions)  # dictionnaire des transitions pour l'etat :  {action-> [proba,etat,reward,done]}
+    # states, mdp = env.getMDP()  # recupere le mdp et la liste d'etats
+    # print("Nombre d'etats : ", len(states))
+    # state, transitions = list(mdp.items())[0]
+    # print(state)  # un etat du mdp
+    # print(transitions)  # dictionnaire des transitions pour l'etat :  {action-> [proba,etat,reward,done]}
 
     # Execution avec un Agent
     agent = RandomAgent(env.action_space)

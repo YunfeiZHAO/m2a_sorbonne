@@ -21,7 +21,7 @@ COLORS = {0:[0,0,0], 1:[128,128,128], \
           2:[0,0,255], 3:[0,255,0], \
           5:[255,0,0], 6:[255,0,255], \
           4:[255,255,0]}
-COLORSDIC = {0: "white", 1:"gray", 2:"blue",3:"green",4:"cyan",5:"red",6:"magenta"} 
+COLORSDIC = {0: "white", 1:"gray", 2:"blue",3:"green",4:"yellow",5:"red",6:"magenta"}
 
 def str_color(s):
     return utils.colorize(" ",COLORSDIC[int(s)],highlight=True)
