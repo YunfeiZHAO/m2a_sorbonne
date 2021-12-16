@@ -1,4 +1,4 @@
-    import matplotlib
+import matplotlib
 import gym
 import gridworld
 from gym import wrappers, logger
@@ -45,7 +45,6 @@ class QLearning(object):
         return ss
 
     def act(self, obs):
-        # return self.action_space.sample()   #TODO remplacer par action QLearning
         possible_actions = self.values[obs]
         return possible_actions.argmax()
 
@@ -63,38 +62,20 @@ class QLearning(object):
         self.last_done = done
 
     def learn(self, done):
-        if self.algo == 'sarsa':  # sarsa
-            new_action = self.act(self.last_dest)
-            if done:
-                self.values[self.last_source][self.last_action] = \
-                    self.values[self.last_source][self.last_action] + \
-                    self.alpha * (self.last_reward - self.values[self.last_source][self.last_action])
-            else:
-                self.values[self.last_source][self.last_action] = \
-                    self.values[self.last_source][self.last_action] + \
-                    self.alpha * (self.last_reward + self.discount * self.values[self.last_dest][new_action] -
-                                  self.values[self.last_source][self.last_action])
-        elif self.algo == 'QLearning':  # Q-learning
-            if done:
-                self.values[self.last_source][self.last_action] = \
-                    self.values[self.last_source][self.last_action] + \
-                    self.alpha * (self.last_reward - self.values[self.last_source][self.last_action])
-            else:
-                self.values[self.last_source][self.last_action] = \
-                    self.values[self.last_source][self.last_action] + \
-                    self.alpha * (self.last_reward + self.discount * self.values[self.last_dest].max() -
-                                  self.values[self.last_source][self.last_action])
-
-        pass  #TODO
+        if done:
+            self.values[self.last_source][self.last_action] = \
+                self.values[self.last_source][self.last_action] + \
+                self.alpha * (self.last_reward - self.values[self.last_source][self.last_action])
+        else:
+            self.values[self.last_source][self.last_action] = \
+                self.values[self.last_source][self.last_action] + \
+                self.alpha * (self.last_reward + self.discount * self.values[self.last_dest].max() -
+                              self.values[self.last_source][self.last_action])
 
 
 if __name__ == '__main__':
-    # env and tensorboard initialisation
-    # algoName: QLearning, sarsa
-    # algoName = 'QLearning'
-    algoName = 'sarsa'
+    algoName = 'QLearning'
     env, config, outdir, logger = init('./configs/config_qlearning_gridworld.yaml', algoName)  # in util.py
-    config['algo'] = algoName
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
     nbTest = config["nbTest"]
@@ -114,7 +95,6 @@ if __name__ == '__main__':
     for i in range(episode_count):
         checkConfUpdate(outdir, config)  # permet de changer la config en cours de run
         rsum = 0
-        agent.nbEvents = 0
         ob = env.reset()
         if i > 0 and i % int(config["freqVerbose"]) == 0:
             verbose = True
