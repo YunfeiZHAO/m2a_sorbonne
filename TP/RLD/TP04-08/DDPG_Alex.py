@@ -161,7 +161,7 @@ if __name__ == '__main__':
     np.random.seed(config["seed"])
     episode_count = config["nbEpisodes"]
 
-    agent = RandomAgent(env,config)
+    agent = RandomAgent(env, config)
 
     rsum = 0
     mean = 0

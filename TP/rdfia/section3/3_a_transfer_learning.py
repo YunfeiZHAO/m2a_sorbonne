@@ -47,12 +47,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 torch.manual_seed(0)
 imagenet_classes = pickle.load(open('imagenet_classes.pkl', 'rb'))
-
+writer = SummaryWriter(f"./experiments/3_a")  # + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
 def vgg16_simple():
     # cat = Image.open('cat.jpg')
     #dog = Image.open('dog.jpg')
     me = Image.open('photo.png')
+
     me.show()
     #plt.imshow(dog)
     # Add your images
@@ -110,7 +111,7 @@ def vgg16_simple_feature_map():
 
     y = vgg16(t(x))
 
-    img_grid = torchvision.utils.make_grid(images)
+    img_grid = torchvision.utils.make_grid()
     return y, activation
     # convs = list(vgg16.children())
     # conv1 = list(convs[0].children())[0]
