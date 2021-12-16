@@ -87,14 +87,14 @@ if __name__ == '__main__':
     env = gym.make("gridworld-v0")
     # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -2, 6: -1})
     # env.setPlan("gridworldPlans/plan1.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan3.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 0.05, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan3.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 100, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
     # env.setPlan("gridworldPlans/plan7.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
-    # env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
-    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
+    # env.setPlan("gridworldPlans/plan8.txt", {0: -1, 3: 5, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
     # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
     env.seed(0)  # Initialise le seed du pseudo-random
     # print(env.action_space)  # Quelles sont les actions possibles
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # print(transitions)  # dictionnaire des transitions pour l'etat :  {action-> [proba,etat,reward,done]}
 
     # Execution avec un Agent
-    PolicyIterationAgent = PolicyIterationAgent(env, e=1e-8, display_frequence=20)
+    PolicyIterationAgent = PolicyIterationAgent(env, gamma=0.99)
     PolicyIterationAgent.train()
     time.sleep(5)
 
