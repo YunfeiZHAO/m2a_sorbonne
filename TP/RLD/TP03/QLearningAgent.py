@@ -1,4 +1,4 @@
-    import matplotlib
+import matplotlib
 import gym
 import gridworld
 from gym import wrappers, logger

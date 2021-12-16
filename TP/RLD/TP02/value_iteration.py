@@ -60,7 +60,7 @@ class ValueIterationAgent(object):
             rsum += reward
             j += 1
             self.env.render()
-            if done or j > 100:
+            if done or j > 1000:
                 print("rsum=" + str(rsum) + ", " + str(j) + " actions")
                 break
 
@@ -71,17 +71,17 @@ class ValueIterationAgent(object):
 
 if __name__ == '__main__':
     env = gym.make("gridworld-v0")
-    env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -2, 6: -1})
+    # env.setPlan("gridworldPlans/plan0.txt", {0: -0.001, 3: 1, 4: 1, 5: -2, 6: -1})
     # env.setPlan("gridworldPlans/plan1.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan3.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan4.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -1})
-    # env.setPlan("gridworldPlans/plan7.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1})
-    # env.setPlan("gridworldPlans/plan8.txt", {0: 0, 3: 1, 4: 1, 5: -1, 6: -1})
-        # env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
-    # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 2, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan2.txt", {0: -0.001, 3: 1, 4: 0.05, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan3.txt", {0: -0.00001, 3: 1, 4: 1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan4.txt", {0: -1, 3: 1, 4: 0, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 0.1, 5: -1, 6: -1})
+    # env.setPlan("gridworldPlans/plan6.txt", {0: -0.001, 3: 4, 4: 0.1, 5: -1, 6: -0.1})
+    # env.setPlan("gridworldPlans/plan7.txt", {0: -0.1, 3: 0.1, 4: 1, 5: -0.1, 6: -0.1})
+    # env.setPlan("gridworldPlans/plan8.txt", {0: -1, 3: 5, 4: 1, 5: -1, 6: -1})
+    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 2, 5: -1, 6: -0.1}) # trop lourd
+    # env.setPlan("gridworldPlans/plan10.txt", {0: -0.001, 3: 1, 4: 1, 5: -0.0001, 6: -1})
     env.seed(0)  # Initialise le seed du pseudo-random
     # print(env.action_space)  # Quelles sont les actions possibles
     # print(env.step(1))  # faire action 1 et retourne l'observation, le reward, et un done un booleen (jeu fini ou pas)
@@ -94,5 +94,5 @@ if __name__ == '__main__':
     # print(transitions)  # dictionnaire des transitions pour l'etat :  {action-> [proba,etat,reward,done]}
 
     # Execution avec un Agent
-    ValueIterationAgent = ValueIterationAgent(env)
+    ValueIterationAgent = ValueIterationAgent(env, gamma=0.9)
     ValueIterationAgent.train()
