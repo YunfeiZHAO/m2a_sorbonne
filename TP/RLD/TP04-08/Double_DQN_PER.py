@@ -20,7 +20,7 @@ from core import *
 from memory import *
 
 
-class DQN(object):
+class DoubleDQNPER(object):
     """Deep Q-Networl with experience replay"""
     def __init__(self, env, opt):
         self.opt = opt
@@ -46,7 +46,7 @@ class DQN(object):
         with torch.no_grad():
             self.Q_target = copy.deepcopy(self.Q)
         # Definition of loss
-        self.loss = nn.SmoothL1Loss()
+        self.loss = nn.SmoothL1Loss(reduce=False)
         # Optimiser
         self.lr = float(opt.lr)
         self.optim = torch.optim.SGD(self.Q.parameters(), lr=self.lr)
@@ -77,19 +77,28 @@ class DQN(object):
             return
         else:
             # get mini_batch a batch of (ob, action, reward, new_ob, done)
-            mask, _, mini_batch = self.D.sample(self.opt["mini_batch_size"])
+            idx, w, mini_batch = self.D.sample(self.opt["mini_batch_size"])
+            # instance sampling weight
+            # w = w / np.max(w)
+
+            # reform date
             column_mini_batch = list(zip(*mini_batch))
             obs_batch = torch.tensor(column_mini_batch[0], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             action_batch = torch.tensor(column_mini_batch[1], dtype=torch.int64)
-
             r_batch = torch.tensor(column_mini_batch[2], dtype=torch.float)
             new_obs_batch = torch.tensor(column_mini_batch[3], dtype=torch.float).squeeze(dim=1) # B, dim_obs=4
             done_batch = torch.tensor(column_mini_batch[4], dtype=torch.float)
 
-            y_batch = r_batch + self.discount * torch.max(self.Q_target.forward(new_obs_batch), dim=-1).values * (1 - done_batch) # if done this term is 0
+            # Q update
+            action_max = torch.max(self.Q.forward(new_obs_batch), dim=-1).indices  # action with best Q value selected by Q
+            y_batch = r_batch + self.discount * self.Q_target.forward(new_obs_batch).gather(1,  torch.unsqueeze(action_max, 1)).squeeze(1) * (1 - done_batch) # if done this term is 0
             q_batch = self.Q.forward(obs_batch).gather(1,  torch.unsqueeze(action_batch, 1)).squeeze(1) # reward self.Q.forward(obs_batch): B, action number
+            tderr = y_batch - q_batch
+            self.D.update(idx, torch.abs_(tderr).detach().numpy())
 
-            output = self.loss(y_batch, q_batch)
+            element_loss = self.loss(y_batch, q_batch)
+            output = torch.sum(element_loss)  # * torch.tensor(w))
+
             logger.direct_write("Train/Loss", output, self.nbEvents)
             logger.direct_write("Train/Mean Q", torch.mean(q_batch), self.nbEvents)
             output.backward()
@@ -107,12 +116,6 @@ class DQN(object):
                 done = False
             tr = (ob, action, reward, new_ob, done)
             index = self.D.store(tr)
-            ob = torch.tensor([ob], dtype=torch.float)
-            new_ob = torch.tensor([new_ob], dtype=torch.float)
-            y = reward + self.discount * torch.max(self.Q_target(new_ob), dim=-1).values * (1 - done)
-            q = self.Q(ob).view(-1).gather(0, torch.unsqueeze(torch.tensor(action, dtype=torch.int64), 0)).squeeze(0)
-            tderr = torch.abs_(y - q).detach().numpy()
-            self.D.update([index], np.abs(tderr))
             # ici on n'enregistre que la derniere transition pour traitement immédiat,
             # mais on pourrait enregistrer dans une structure de buffer (c'est l'interet de memory.py)
             self.lastTransition = tr
@@ -130,9 +133,9 @@ class DQN(object):
 if __name__ == '__main__':
     # Configuration
     # pour lunar pip install Box2D
-    # env, config, outdir, logger = init('./configs/config_DQN_cartpole.yaml', "DQN")
-    env, config, outdir, logger = init('./configs/config_DQN_gridworld.yaml', "DQN")
-    # env, config, outdir, logger = init('./configs/config_DQN_lunar.yaml', "DQN")
+    # env, config, outdir, logger = init('./configs/config_DQN_PER_gridworld.yaml', "Double_DQN_PER")
+    # env, config, outdir, logger = init('configs/config_Double_DQN_PER_cartpole.yaml', "Double_DQN_PER")
+    env, config, outdir, logger = init('./configs/config_Double_DQN_PER_lunar.yaml', "Double_DQN_PER")
 
     print(config)
     freqTest = config["freqTest"]
@@ -143,7 +146,7 @@ if __name__ == '__main__':
     episode_count = config["nbEpisodes"]
 
     # Agent
-    agent = DQN(env, config)
+    agent = DoubleDQNPER(env, config)
     rsum = 0
     mean = 0
     verbose = True

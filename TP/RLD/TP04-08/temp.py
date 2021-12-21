@@ -1,0 +1,6 @@
+ob = torch.tensor([ob], dtype=torch.float)
+new_ob = torch.tensor([new_ob], dtype=torch.float)
+y = reward + self.discount * torch.max(self.Q_target(new_ob), dim=-1).values * (1 - done)
+q = self.Q(ob).view(-1).gather(0, torch.unsqueeze(torch.tensor(action, dtype=torch.int64), 0)).squeeze(0)
+tderr = torch.abs_(y - q).detach().numpy()
+self.D.update([index], np.abs(tderr))
