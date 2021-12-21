@@ -1,15 +1,14 @@
-env: CartPole-v1                                                  # environnement
+env: LunarLander-v2
 seed: 5
 featExtractor: !!python/name:__main__.NothingToDo ''
 freqSave: 1000
-freqTest: 1000
+freqTest: 10000000
 nbTest: 1
-freqVerbose: 1000
-
+freqVerbose: 10
 fromFile: null
 nbEpisodes: 1000000
-maxLengthTrain: 300
-maxLengthTest: 500
+maxLengthTrain: 500
+maxLengthTest: 1000
 
 mem_size: 10000
 mini_batch_size: 100

@@ -25,7 +25,7 @@ C: 100
 discount: 0.9
 
 # network learning rate
-lr: 5e-3
+lr: 1e-3
 
 # Optimisation de la politique tous les freqOptim evenements
 freqOptim: 20
