@@ -2,8 +2,9 @@
 
 #  MNIST data downloadable at https://pjreddie.com/projects/mnist-in-csv/
 
+setwd("/home/yunfei/Desktop/m2a_sorbonne/TP/OCO")
+library(RColorBrewer)
 
-setwd("~/DropSU/Lecture/LPSM/OCO/MNIST")
 mnist_train <- read.csv("mnist_train.csv", stringsAsFactors = F, header = F)
 mnist_test <- read.csv("mnist_test.csv", stringsAsFactors = F, header = F)
 
@@ -349,9 +350,7 @@ EKF <- function(a, b, init, iters = length(b), cost,  instgrad, lambda,gamm,z) {
 }
 
 ################################################# Exploration algorithm #################################################
-
 SREGpm <- function(a, b, iters = length(b), cost,  instgrad, lambda,z) {
-  
   ind<-sample(1:length(b),iters,replace=TRUE)
   a<-a[ind,]
   b<-b[ind]
@@ -370,25 +369,21 @@ SREGpm <- function(a, b, iters = length(b), cost,  instgrad, lambda,z) {
     eta <-sqrt(1/(i*2*d))
     j <- sample(1:d,1)
     instgj <- instgrad(x[j], a[i,j], b[i], lambda)
-    w[c(j,j+d)]<-  exp( eta *d* c(-instgj,instgj ))*w[c(j,j+d)] 
+    w[c(j,j+d)] <- exp( eta *d* c(-instgj,instgj ))*w[c(j,j+d)]
     w <- w/sum(w)
     x <- z*c(w[1:d]-w[d+1:d])
     m <- ((i-1)*m+x)/i
-    if (i%% (iters/100) == 0)
+    if (i %% (iters/100) == 0)
     {
       param[k, ] <- c(m,cost(m, a, b,lambda))
       k<-k+1
     }
   }
-  
   param <- cbind(Iteration = c(1,1:100*(iters/100)), param)
-  
   return(param)
-  
 }
 
 SBEGpm <- function(a, b, iters = length(b), cost,  instgrad, lambda,z) {
-  
   ind<-sample(1:length(b),iters,replace=TRUE)
   a<-a[ind,]
   b<-b[ind]
@@ -423,9 +418,7 @@ SBEGpm <- function(a, b, iters = length(b), cost,  instgrad, lambda,z) {
   param <- cbind(Iteration = c(1,1:100*(iters/100)), param)
   
   return(param)
-  
 }
-
 ################################################# Auxiliary functions #################################################
 
 # Cost function: regularized hinge loss
@@ -658,7 +651,7 @@ paramSREGpm <- SREGpm(a = as.matrix(train[,-1]),
                       cost = hingereg,
                       instgrad = instgradreg,
                       lambda = 0,
-                      z=100) # Play with the diameter of the l1 ball
+                      z=10) # Play with the diameter of the l1 ball
 end_time <- Sys.time()
 end_time - start_time
 
@@ -671,7 +664,7 @@ paramSBEGpm <- SBEGpm(a = as.matrix(train[,-1]),
                       cost = hingereg,
                       instgrad = instgradreg,
                       lambda = 0,
-                      z=100) # Play with the diameter of the l1 ball
+                      z=10) # Play with the diameter of the l1 ball
 end_time <- Sys.time()
 end_time - start_time
 
@@ -703,3 +696,15 @@ matplot(paramSGD[,1],cbind(1-rateSGD,1-rateSGDproj,1-rateSMDproj,1-rateSEGpm,1-r
 legend("bottomleft", inset=.02, title="Algorithms",
        c("SGD","SGDproj","SMDproj","SEGpm","Adaproj","BOA","Adamproj","ONS","EKF","SREGpm","SBEGpm"), fill=brewer.pal(11,"RdYlGn"), cex=0.8)
 
+################################################# My graph ################################################
+
+
+regret_bound<- function(T){
+  regret <- sqrt(200 * T * log(785))
+  return(regret/T)
+}
+
+regret <- regret_bound(paramSREGpm[,1])
+matplot(paramSREGpm[,1],cbind(1-rateSREGpm, 1-rateSBEGpm, regret),type="l",col=brewer.pal(4,"RdYlGn"),log="xy",xlab="Iterations",ylab="Accuracy",
+        main = "SVM on Test Set from MNIST",lwd=2)
+legend("bottomleft", inset=.02, title="Algorithms", c("SREGpm", "SBEGpm", "Regret/T"), fill=brewer.pal(4,"RdYlGn"), cex=0.8)
