@@ -752,3 +752,7 @@ legend("bottomleft", inset=.02, title="Algorithms", c("SREGpm", "SBEGpm", "Regre
 ####################################################################################
 ####question7 ##############################################
 ###################################################################################"
+
+git filter-branch --force --index-filter \
+  'git rm --cached --ignore-unmatch mnist_train.csv' \
+  --prune-empty --tag-name-filter cat -- --all

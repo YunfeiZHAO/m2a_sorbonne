@@ -14,3 +14,5 @@ XP
 *.pth
 visualisation
 15SceneData
+mnist_train.csv
+mnist_test.csv
