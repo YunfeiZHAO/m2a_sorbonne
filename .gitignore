@@ -14,5 +14,8 @@ XP
 *.pth
 visualisation
 15SceneData
+<<<<<<< HEAD
 mnist_train.csv
 mnist_test.csv
+=======
+>>>>>>> b26e04d500b42c0f5bc035258e0e807b8258601e
