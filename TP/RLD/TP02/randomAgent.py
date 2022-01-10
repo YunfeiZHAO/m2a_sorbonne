@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
 
     env = gym.make("gridworld-v0")
-    env.setPlan("gridworldPlans/plan9.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
+    env.setPlan("gridworldPlans/plan5.txt", {0: -0.001, 3: 1, 4: 1, 5: -1, 6: -1})
 
     env.seed(0)  # Initialise le seed du pseudo-random
     print(env.action_space)  # Quelles sont les actions possibles
