@@ -3,6 +3,7 @@ import gym
 import gridworld
 from gym import wrappers, logger
 import numpy as np
+import random
 import copy
 from datetime import datetime
 import os
@@ -20,8 +21,8 @@ class QLearning(object):
         self.alpha = opt.learningRate
         self.explo = opt.explo
         self.exploMode = opt.exploMode  # 0: epsilon greedy, 1: ucb
-        self.algo = opt.algo
-        self.modelSamples = opt.nbModelSamples
+        self.eps = opt.explo
+        self.decay = opt.decay
         self.test = False
         self.qstates = {}  # dictionnaire d'états rencontrés
         self.values = []   # contient, pour chaque numéro d'état, les qvaleurs des self.action_space.n actions possibles
@@ -45,8 +46,13 @@ class QLearning(object):
         return ss
 
     def act(self, obs):
-        possible_actions = self.values[obs]
-        return possible_actions.argmax()
+        self.eps = self.eps * self.decay
+        if random.random() < self.eps:
+            a = self.action_space.sample()
+        else:
+            possible_actions = self.values[obs]
+            a = possible_actions.argmax()
+        return a
 
     def store(self, ob, action, new_ob, reward, done, it):
 
@@ -74,7 +80,7 @@ class QLearning(object):
 
 
 if __name__ == '__main__':
-    algoName = 'QLearning'
+    algoName = 'QLearning-plan9'
     env, config, outdir, logger = init('./configs/config_qlearning_gridworld.yaml', algoName)  # in util.py
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
@@ -109,7 +115,7 @@ if __name__ == '__main__':
         if i % freqTest == nbTest and i > freqTest:
             print("End of test, mean reward=", mean_test / nbTest)
             itest += 1
-            logger.direct_write(f"rewardTest/{algoName}-{config['map']}", mean_test / nbTest, itest)
+            logger.direct_write(f"rewardTest/{config['map']}", mean_test / nbTest, itest)
             agent.test = False
 
         if i % freqSave == 0:
@@ -143,7 +149,7 @@ if __name__ == '__main__':
                     env.render()
                 print(algoName)
                 if not agent.test:
-                    logger.direct_write(f"rewardTrain/{algoName}-{config['map']}", rsum, i)
+                    logger.direct_write(f"rewardTrain/{config['map']}", rsum, i)
                 else:
                     mean_test += rsum
                 print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")

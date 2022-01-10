@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SumTree:
     def __init__(self, mem_size):
         self.tree = np.zeros(2 * mem_size - 1)
@@ -32,6 +33,10 @@ class SumTree:
         return self.ptr
 
     def sample(self, value):
+        """
+        :param : value for sum tree
+        :return : index of choosed sample, weight of chose sample, sample
+        """
         ptr = 0
         while ptr < self.size - 1:
             left = 2 * ptr + 1
@@ -83,6 +88,7 @@ class Memory:
 
     def store(self, transition):
         if self.prior:
+            # initialise with max p value in Tree
             p = self.tree.max_p
             if not p:
                 p = self.p_upper
