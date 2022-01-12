@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 library(RColorBrewer)
 
@@ -121,6 +122,11 @@ rate <- function(param,c){colMeans(c[,1]*( as.matrix(c[,-1]) %*% t(as.matrix(par
 #sample a vector in d-unit ball
 
 #Illustration（unit ball）
+=======
+#sample a vector in d-unit ball
+
+#二维图示（unit ball）
+>>>>>>> a10842cb09504016c6a4b8a84046154b6d5df437
 start_time <- Sys.time()
 x<-c()
 for(i in 1:3000){
@@ -133,7 +139,11 @@ plot(x[1,],x[2,],xlim = c(-2,2),ylim=c(-2,2))
 end_time <- Sys.time()
 end_time - start_time
 
+<<<<<<< HEAD
 #Another version (faster)
+=======
+#另一种方法（更快）
+>>>>>>> a10842cb09504016c6a4b8a84046154b6d5df437
 
 start_time <- Sys.time()
 u<-rnorm(2*3000,0,1)
@@ -150,6 +160,7 @@ plot(x[1,],x[2,],xlim = c(-2,2),ylim=c(-2,2))
 end_time <- Sys.time()
 end_time - start_time
 
+<<<<<<< HEAD
 
 
 
@@ -157,6 +168,10 @@ end_time - start_time
 
 #sample the vector v which is the random direction
 unit_ball<-function(dim,m){
+=======
+#function:
+unit_ball(dim,m){
+>>>>>>> a10842cb09504016c6a4b8a84046154b6d5df437
   u<-rnorm(dim,0,1)
   norm<-sum(u**2)**(0.5)
   r<-runif(1,0,1)**(1.0/dim)
@@ -168,6 +183,7 @@ unit_ball<-function(dim,m){
   R=matrix(rep(r,dim),nrow=dim,ncol=m,byrow=TRUE)
   Norm<-matrix(rep(norm,dim),nrow=dim,ncol=m,byrow=TRUE)
   x<-R*u/Norm
+<<<<<<< HEAD
   return(t(x))#transposé 
 }
 
@@ -550,3 +566,7 @@ legend(x=30,y=1, inset=.02, title="Algorithms",
 
 
 
+=======
+  return(x)
+}
+>>>>>>> a10842cb09504016c6a4b8a84046154b6d5df437
