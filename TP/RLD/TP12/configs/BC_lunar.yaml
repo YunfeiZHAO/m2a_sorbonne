@@ -1,0 +1,27 @@
+env: LunarLander-v2
+seed: 5
+featExtractor: !!python/name:__main__.NothingToDo ''
+freqSave: 1000
+freqTest: 10000000
+nbTest: 1
+freqVerbose: 10
+fromFile: null
+nbEpisodes: 1000000
+maxLengthTrain: 500
+maxLengthTest: 1000
+
+# epsilon greedy
+eps: 0.15
+decay: 0.99999
+
+# target network update step
+C: 100
+
+# gamma for temporal differential
+discount: 0.9
+
+# network learning rate
+lr: 5e-3
+
+# Optimisation de la politique tous les freqOptim evenements
+freqOptim: 20
