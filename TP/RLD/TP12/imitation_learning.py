@@ -106,7 +106,6 @@ class BC(object):
     def timeToLearn(self, done):
         if self.test:
             return False
-
         self.nbEvents += 1
         return self.nbEvents >= self.batch_size and self.nbEvents % self.opt.freqOptim == 0
         # return done
@@ -191,8 +190,8 @@ def main():
 
             if agent.timeToLearn(done):
                 agent.learn()
-                if agent.nbEvents % config['C'] == 0:
-                    agent.Q_target.load_state_dict(agent.Q.state_dict())
+                # if agent.nbEvents % config['C'] == 0:
+                #     agent.Q_target.load_state_dict(agent.Q.state_dict())
 
             if done:
                 if verbose:
@@ -206,7 +205,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    test_function()
+    # main()
 
 
 
