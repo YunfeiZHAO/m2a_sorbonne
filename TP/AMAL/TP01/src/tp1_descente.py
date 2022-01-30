@@ -31,7 +31,7 @@ def gradient_descent():
         loss.backward()
 
         ##  TODO:  Mise à jour des paramètres du modèle
-        with torch.no_grad():
+            
             w -= w.grad*lr
             b -= b.grad*lr
             w.grad.zero_()
