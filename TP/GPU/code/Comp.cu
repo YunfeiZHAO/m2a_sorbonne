@@ -35,20 +35,27 @@ __device__ void Test(int *a) {
 __device__ int aGlob[NB*NTPB];					// Global variable solution
 
 __global__ void MemComp(int *a){
+	
+	int ra;
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	//shared
+	//__shared__ int sa[NTPB];
+	// sa[threadIdx.x] = a[idx];
+	// Test(sa + threadIdx.x);
+	// a[idx] = sa[threadIdx.x];
+	// global memory
+	// aGlob[idx] = a[idx];
+	// Test(aGlob + idx);
+	// a[idx] = aGlob[idx];
 
-	int idx = threadIdx.x + blockIdx.x*blockDim.x;
+	ra = a[idx];
+	Test(&ra);
+	a[idx] = ra;
 
-	aGlob[idx] = a[idx];
-
-	Test(aGlob + idx);
-
-	a[idx] = aGlob[idx];
 }
 
 
 int main (void){
-
-	
 	int *a, *aGPU;
 	float Tim;										// GPU timer instructions
 	cudaEvent_t start, stop;						// GPU timer instructions

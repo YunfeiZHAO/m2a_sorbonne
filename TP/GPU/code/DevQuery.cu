@@ -27,12 +27,16 @@ int main (void){
 
 	empty_k<<<1,1>>>();
 
-	/*************************************************************
+	int deviceCount;
+	cudaGetDeviceCount(&deviceCount);
+	int device;
+	for(device=0; device < deviceCount; ++device) {
+		cudaDeviceProp deviceProp;
+		cudaGetDeviceProperties(&deviceProp, device);
 
-	Once requested, replace this comment by the appropriate code
-
-	*************************************************************/
-
+		printf("Name of my GPU %s\n", deviceProp.name);
+		printf("si")
+	}
 
 	return 0;
 }

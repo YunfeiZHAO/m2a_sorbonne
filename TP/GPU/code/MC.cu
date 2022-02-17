@@ -6,6 +6,27 @@ the name of the author above.
 ***************************************************************/
 #include "rng.h"
 
+__device__ void getCMRG_d(int *a0, int *a1, int *a2, int *a3, int *a4, 
+			     int *a5, int *Tab){
+	*a0 = Tab[0];
+	*a1 = Tab[1];
+	*a2 = Tab[2];
+	*a3 = Tab[3];
+	*a4 = Tab[4];
+	*a5 = Tab[5];
+}
+
+__device__ void setCMRG_d(int *a0, int *a1, int *a2, int *a3, int *a4, 
+			     int *a5, int *Tab){
+	Tab[0] = *a0;
+	Tab[1] = *a1;
+	Tab[2] = *a2;
+	Tab[3] = *a3;
+	Tab[4] = *a4;
+	Tab[5] = *a5;
+
+}
+
 
 // Generate uniformly distributed random variables
 __device__ void CMRG_d(int *a0, int *a1, int *a2, int *a3, int *a4, 
@@ -102,23 +123,37 @@ __global__ void MC_k(float *S, float x_0, float r,
 					 int *It, float B, int Ntraj, int M,
 					 TabSeedCMRG_t *pt_cmrg){
 
-   int idx = threadIdx.x + blockIdx.x*blockDim.x;
+	int idx = threadIdx.x + blockIdx.x*blockDim.x;
 
-   S[idx] = x_0;
-   It[idx] = 0;
-   for (int k=1; k<=M; k++){
-	   CMRG_d(pt_cmrg[0][idx], pt_cmrg[0][idx]+1, pt_cmrg[0][idx]+2, 
-			  pt_cmrg[0][idx]+3, pt_cmrg[0][idx]+4, pt_cmrg[0][idx]+5, 
-			  U+idx, U+idx+Ntraj, 2);
+	int a0, a1, a2, a3, a4, a5, Itr;
+	float Sr, U1, U2;
+
+	getCMRG_d(&a0, &a1, &a2, &a3, &a4, &a5, pt_cmrg[9][idx]);
+
+
+	S[idx] = x_0;
+	//It[idx] = 0;
+	Itr = 0;
+	for (int k=1; k<=M; k++){
+		CMRG_d(pt_cmrg[0][idx], pt_cmrg[0][idx]+1, pt_cmrg[0][idx]+2, 
+				pt_cmrg[0][idx]+3, pt_cmrg[0][idx]+4, pt_cmrg[0][idx]+5, 
+				U+idx, U+idx+Ntraj, 2);
+
+		BoxMuller_d(U + idx, U + idx + Ntraj);
+		BS_d(S + idx + (k%2) * Ntraj, S[idx + ((k+1)%2)*Ntraj], r, sigma, dt, U[idx]);
 	   /**************************************************************
 		Step 4:
 		-------
 			Write the appropriate call of BoxMuller_d and BS_d 
 
 	   ***************************************************************/
-	   It[idx] += (S[idx+(k%2)*Ntraj]<B);
+	   // It[idx] += (S[idx+(k%2)*Ntraj]<B);
+		Itr += (Sr < B);
    }
-   R1[idx] = expf(-r*dt*dt*M)*fmaxf(0.0f, S[idx+(M%2)*Ntraj]-K)*((It[idx]<=P2)&&(It[idx]>=P1));
+
+   setCMRG_d(&a0, &a1, &a2, &a3, &a4, &a5, pt_cmrg[9][idx]);
+   //R1[idx] = expf(-r*dt*dt*M)*fmaxf(0.0f, S[idx+(M%2)*Ntraj]-K)*((It[idx]<=P2)&&(It[idx]>=P1));
+   R1[idx] = expf(-r*dt*dt*M)*fmaxf(0.0f, Sr - K)*((It[idx]<=P2)&&(It[idx]>=P1));
    R2[idx] = R1[idx]*R1[idx];
 }
 
