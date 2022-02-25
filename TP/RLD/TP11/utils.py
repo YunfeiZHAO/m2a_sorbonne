@@ -1,6 +1,6 @@
 import time
 import subprocess
-from collections import namedtuple, defaultdict
+from collections import namedtuple,defaultdict
 import logging
 import json
 import os
@@ -10,16 +10,16 @@ import sys
 import threading
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
-
+import torch
+import numpy as np
 
 def loadTensorBoard(outdir):
     t = threading.Thread(target=launchTensorBoard, args=([outdir]))
     t.start()
 
-
 def launchTensorBoard(tensorBoardPath):
     print('tensorboard --logdir=' + tensorBoardPath)
-    ret=os.system('tensorboard --logdir=' + tensorBoardPath)
+    ret=os.system('tensorboard --logdir='  + tensorBoardPath)
     if ret!=0:
         syspath = os.path.dirname(sys.executable)
         print(os.path.dirname(sys.executable))
@@ -27,13 +27,13 @@ def launchTensorBoard(tensorBoardPath):
     return
 
 
+
 class LogMe(dict):
-    def __init__(self, writer, term=True):
+    def __init__(self,writer,term=True):
         self.writer = writer
         self.dic = defaultdict(list)
         self.term = term
-
-    def write(self, i):
+    def write(self,i):
         if len(self.dic)==0: return
         s=f"Epoch {i} : "
         for k,v in self.dic.items():
@@ -41,14 +41,13 @@ class LogMe(dict):
             s+=f"{k}:{sum(v)*1./len(v)} -- "
         self.dic.clear()
         if self.term: logging.info(s)
-    def update(self, l):
+    def update(self,l):
         for k,v in l:
             self.add(k,v)
     def direct_write(self,k,v,i):
         self.writer.add_scalar(k,v,i)
     def add(self,k,v):
         self.dic[k].append(v)
-
 
 def save_src(path):
     current_dir = os.getcwd()
@@ -69,6 +68,7 @@ def save_src(path):
     os.chdir(current_dir)
 
 
+
 def prs(*args):
     st = ""
     for s in args:
@@ -85,24 +85,20 @@ class DotDict(dict):
 
 def load_yaml(path):
     with open(path, 'r') as stream:
-        opt = yaml.load(stream, Loader=yaml.Loader)
+        opt = yaml.load(stream,Loader=yaml.Loader)
     return DotDict(opt)
 
-
-def write_yaml(file, dotdict):
-    d = dict(dotdict)
+def write_yaml(file,dotdict):
+    d=dict(dotdict)
     with open(file, 'w', encoding='utf8') as outfile:
         yaml.dump(d, outfile, default_flow_style=False, allow_unicode=True)
-
 
 global verbose
 verbose=2
 
-
 def printv(*o,p=0):
     if p<verbose:
         print(*o)
-
 
 def checkConfUpdate(outdir,config):
     if os.path.exists(os.path.join(outdir, 'update.yaml')):
@@ -122,7 +118,6 @@ def checkConfUpdate(outdir,config):
         except SyntaxError:
             print("pb with exec code in config")
 
-
 def logConfig(logger,config):
     print(str(yaml.dump(dict(config))))
     st = ""
@@ -130,8 +125,7 @@ def logConfig(logger,config):
         st += "\t \t \t \n" + str(i) + ":" + str(v)
     logger.writer.add_text("config", st, 1)
 
-
-def logRun(name, config, agent_object):
+def logRun(name,config,agent_object):
     global agent
     agent=agent_object
     now = datetime.now()
@@ -145,16 +139,43 @@ def logRun(name, config, agent_object):
     logger = LogMe(SummaryWriter(outdir))
     loadTensorBoard(outdir)
     logConfig(logger, config)
-    return logger, outdir
+    return logger,outdir
 
 
 def init(config_file, algoName):
     config = load_yaml(config_file)
+    config["commit"] = subprocess.check_output(['git', 'show-ref']).decode('utf-8')
     if config.get("import") is not None:
         exec(config["import"])
+    try:
+        env = gym.make(config["env"])
+    except gym.error.Error:
+        env=config["env_maker"](config["env"])
+
+
+
 
     if config.get("execute") is not None:
         exec(config["execute"])
+
+
+    ss=env.seed(config["seed"])
+    np.random.seed(config["seed"])
+    #a=np.random.get_state()
+    #print(a)
+    #print(np.random.rand())
+    #np.random.set_state(a)
+    #ss = env.seed(config["seed"])
+    #print(ss)
+    #print(np.random.rand())
+
+    torch.manual_seed(config["seed"])
+    if config.device > -1:
+        torch.cuda.manual_seed_all(config["seed"])
+
+    if config.get("determninistic_opt") is not None:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     now = datetime.now()
     date_time = now.strftime("%d-%m-%Y-%HH%M-%SS")
@@ -165,6 +186,6 @@ def init(config_file, algoName):
     save_src(os.path.abspath(outdir))
     write_yaml(os.path.join(outdir, 'config.yaml'), config)
     logger = LogMe(SummaryWriter(outdir))
-    # loadTensorBoard(outdir)
+    loadTensorBoard("./XP/" + config["env"])
 
-    return config, outdir, logger
+    return env, config, outdir, logger

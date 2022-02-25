@@ -8,10 +8,8 @@ class Scenario(BaseScenario):
         world = World()
         # set any world properties first
         world.dim_c = 2
-        # variables to change
-        num_agents = 1
-        num_landmarks = 1
-
+        num_agents = 3
+        num_landmarks = 3
         world.collaborative = True
         # add agents
         world.agents = [Agent() for i in range(num_agents)]

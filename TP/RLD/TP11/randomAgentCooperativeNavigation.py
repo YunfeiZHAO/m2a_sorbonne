@@ -1,18 +1,11 @@
 import matplotlib
 
 matplotlib.use("TkAgg")
-import gym
-import multiagent
-import multiagent.scenarios
-import multiagent.scenarios.simple_tag as simple_tag
-import multiagent.scenarios.simple_tag as simple_spread
-import multiagent.scenarios.simple_tag as simple_adversary
-from multiagent.environment import MultiAgentEnv
-import multiagent.scenarios as scenarios
-from gym import wrappers, logger
+
 import numpy as np
 import copy
-
+from datetime import datetime
+from multiagent.core import World, Agent, Landmark
 
 """
 Code for creating a multiagent environment with one of the scenarios listed
@@ -52,6 +45,7 @@ def make_env(scenario_name, benchmark=False):
     scenario = scenarios.load(scenario_name + ".py").Scenario()
     # create world
     world = scenario.make_world()
+
     # create multiagent environment
     world.dim_c = 0
     if benchmark:
@@ -61,24 +55,27 @@ def make_env(scenario_name, benchmark=False):
     env.discrete_action_space = False
     env.discrete_action_input = False
     scenario.reset_world(world)
-    return env, scenario, world
+    return env,scenario,world
 
 
 if __name__ == '__main__':
-    env, scenario, world = make_env('simple_spread')
+    env,scenario,world = make_env('simple_spread')
+    now = datetime.now()
+    date_time = now.strftime("%d-%m-%Y-%HH%M-%SS")
+    outDir = "./XP/simple_spread/randomMulti_" + date_time
 
     o = env.reset()
     reward = []
-    for _ in range(10000):
+    for _ in range(100):
         a = []
         for i, _ in enumerate(env.agents):
             a.append((np.random.rand(2)-0.5)*2)
+
+        print(a)
         o, r, d, i = env.step(a)
         print(o, r, d, i)
 
         reward.append(r)
         env.render(mode="none")
     print(reward)
-
-
     env.close()
