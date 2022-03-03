@@ -1,0 +1,25 @@
+env: LunarLander-v2   
+seed: 0   
+featExtractor: !!python/name:__main__.NothingToDo ''
+freqSave: 1000
+freqTest: 500
+nbTest: 10
+freqVerbose: 100
+freqOptim: 500                                                                         # Optimisation de la politique tous les freqOptim evenements
+fromFile: null
+nbEpisodes: 30000
+maxLengthTest: 200                                                                    # Longueur maxi des trajectoires en Test
+maxLengthTrain: 200                                                                   # Longueur maxi des trajectoires en Train
+target_update: 500
+epoch_ppo: 15
+epoch_disc: 5
+discount: 0.99
+gae_lambda: 0.95
+entropy: True
+entropy_coef: 0.001
+eps_clip: 0.2
+device: 0
+
+lr_a: 0.0001
+lr_c: 0.0001
+lr_d: 0.0002

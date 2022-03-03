@@ -59,10 +59,11 @@ def make_env(scenario_name, benchmark=False):
 
 
 if __name__ == '__main__':
-    env,scenario,world = make_env('simple_spread')
+    name = 'simple_tag'
+    env, scenario, world = make_env(name)
     now = datetime.now()
     date_time = now.strftime("%d-%m-%Y-%HH%M-%SS")
-    outDir = "./XP/simple_spread/randomMulti_" + date_time
+    outDir = f"./XP/{name}/randomMulti_" + date_time
 
     o = env.reset()
     reward = []

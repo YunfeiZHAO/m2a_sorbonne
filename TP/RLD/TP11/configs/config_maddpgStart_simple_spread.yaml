@@ -2,9 +2,9 @@ action_size: 2      # Taille d'un vecteur d'actions
 activation: !!python/name:torch.nn.functional.leaky_relu ''    # Fonction d'activation des réseaux de neurones utilisés
 finalActivation: !!python/name:torch.tanh ''    # Fonction de sortie de la politique
 agent_types:     # Type d'agent (une entrée par agent, ici 3 agents). 0 = random,  1 = agent DDPG, 2=agent MADDPG
-- 1
-- 1
-- 1
+- 2
+- 2
+- 2
 batchsize: 128       # Taille du batch
 capacity: 1000     # Capacité du buffer
 device: 0           # si <0: cpu sinon numero du gpu
@@ -12,8 +12,8 @@ env: simple_spread      # nom de l'environnement
 freqOptim: 10       # Optimisation tous les freqOptim évènements
 freqTest: 100         # Run de test (sans bruit) tous les freqTest episodes
 nbTest: 1             # nombre d'episodes de test tous les freqTest episodes
-freqVerbose: 1      # Affichage graphique tous les freqVerbose
-freqSave: 1000       # Sauvegarde du modele tous les freqSave episodes
+freqVerbose: 100      # Affichage graphique tous les freqVerbose
+freqSave: 100000000000       # Sauvegarde du modele tous les freqSave episodes
 fromFile: null       # Chargement du modèle à partir de ce repertoire de sauvegarde. Si null, nouveau modèle
 gamma: 0.95         # facteur de discount
 layers:              # Tailles des couches des réseaux
@@ -23,9 +23,9 @@ lr:                   # Learning rates pour les politiques des différents agent
 - 0.001
 - 0.001
 lrq:                  # Learning rates des réseaux Q des différents agents
-- 0.01
-- 0.01
-- 0.01
+- 0.005
+- 0.005
+- 0.005
 maxLengthTest: 100    # longueur maximale d'un episode en test
 maxLengthTrain: 25    # longueur maximale d'un episode en train
 nbSteps: 1            # nombre de pas d'optimisation tous les freqOptim evenements

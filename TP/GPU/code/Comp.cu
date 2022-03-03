@@ -47,7 +47,7 @@ __global__ void MemComp(int *a){
 	// aGlob[idx] = a[idx];
 	// Test(aGlob + idx);
 	// a[idx] = aGlob[idx];
-
+	
 	ra = a[idx];
 	Test(&ra);
 	a[idx] = ra;
