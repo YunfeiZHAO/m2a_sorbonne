@@ -25,6 +25,8 @@ void testCUDA(cudaError_t error, const char *file, int line)  {
 // __FILE__ and __LINE__
 #define testCUDA(error) (testCUDA(error, __FILE__ , __LINE__))
 
+
+
 __device__ void Test(int *a) {
 
 	for (int i = 0; i < 1000; i++) {

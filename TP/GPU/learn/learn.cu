@@ -42,7 +42,7 @@ int main(void) {
     int size = (N + 2*RADIUS) * sizeof(int);
     // Alloc space for host copies and setup values
     in = (int *)malloc(size); fill_ints(in, N + 2*RADIUS);
-    out = (int *)malloc(size); fill_ints(out, N + 2*RADIUS);	serial code
+    out = (int *)malloc(size); fill_ints(out, N + 2*RADIUS);
     // Alloc space for device copies
     cudaMalloc((void **)&d_in, size);
 	cudaMalloc((void **)&d_out, size);
@@ -57,7 +57,6 @@ int main(void) {
     // Copy result back to host
     cudaMemcpy(out, d_out, size, cudaMemcpyDeviceToHost);
     // Cleanup
-    serial code
     free(in); free(out);
     cudaFree(d_in); cudaFree(d_out);
     return 0;
