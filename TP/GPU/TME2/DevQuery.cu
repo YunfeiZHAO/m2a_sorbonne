@@ -29,6 +29,8 @@ int main (void){
 
 	int deviceCount;
 	cudaGetDeviceCount(&deviceCount);
+	printf("The number of devices available %d\n", deviceCount);
+
 	int device;
 	
 	device = 0;

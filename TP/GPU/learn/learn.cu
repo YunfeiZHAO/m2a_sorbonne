@@ -43,7 +43,6 @@ int main(void) {
     // Alloc space for host copies and setup values
     in = (int *)malloc(size); fill_ints(in, N + 2*RADIUS);
     out = (int *)malloc(size); fill_ints(out, N + 2*RADIUS);
-    
     // Alloc space for device copies
     cudaMalloc((void **)&d_in, size);
 	cudaMalloc((void **)&d_out, size);

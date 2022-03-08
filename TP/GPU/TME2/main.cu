@@ -16,14 +16,14 @@ __global__ void addVect_k(int *a, int *b, int *c, int length){
 
 	int i = threadIdx.x + blockIdx.x*blockDim.x;
 
-	/*while(i<length){
+	while(i<length){
 		c[i] = a[i] + b[i];
 		i += blockDim.x*gridDim.x;
-    }*/
-
-	if(i<length){
-		c[i] = a[i] + b[i];
     }
+
+	// if(i<length){
+	// 	c[i] = a[i] + b[i];
+    // }
 }
 
 
@@ -70,10 +70,10 @@ int main (void){
 	cudaEventCreate(&stop);
 	cudaEventRecord(start,0);
 
-	//addVect_k<<<64, 256>>>(aGPU, bGPU, cGPU, length);
+	addVect_k<<<64, 256>>>(aGPU, bGPU, cGPU, length);
 
 
-	addVect_k<<<(length+255)/256, 256>>>(aGPU, bGPU, cGPU, length);
+	// addVect_k<<<(length+255)/256, 256>>>(aGPU, bGPU, cGPU, length);
 
 
 	cudaEventRecord(stop,0);

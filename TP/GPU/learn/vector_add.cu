@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include "timer.h"
 
-#define N 2048
+#define N 4096000
+#define THREADS_PER_BLOCK 8
 
 __global__ void block_add(int *a, int *b, int *c) {
     c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
@@ -10,6 +11,12 @@ __global__ void block_add(int *a, int *b, int *c) {
 
 __global__ void thread_add(int *a, int *b, int *c) {
     c[threadIdx.x] = a[threadIdx.x]+ b[threadIdx.x];
+}
+
+__global__ void block_thread_add(int *a, int *b, int *c, int n) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+        if (index < n) {
+            c[index] = a[index] + b[index];}
 }
 
 void random_ints(int* x, int size)
@@ -40,12 +47,13 @@ int main(void) {
     // Copy inputs to device
     cudaMemcpy(d_a, a, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, b, size, cudaMemcpyHostToDevice);
-    // Launch add() kernel on GPU with N blocks
 
-    Tim.start();						// CPU timer instructions
+    // Launch add() kernel on GPU with N blocks
+    Tim.start();	// CPU timer instructions
     // block_add<<<N,1>>>(d_a, d_b, d_c);
-    thread_add<<<1,N>>>(d_a, d_b, d_c);
-    Tim.add();							// CPU timer instructions
+    // thread_add<<<1,N>>>(d_a, d_b, d_c);
+    block_thread_add<<<N/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_a, d_b, d_c, N);
+    Tim.add();	// CPU timer instructions
 
     // Copy result back to host
     cudaMemcpy(c, d_c, size, cudaMemcpyDeviceToHost);
