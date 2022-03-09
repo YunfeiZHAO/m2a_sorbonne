@@ -2,7 +2,7 @@
 #include "timer.h"
 
 #define NB 512
-#define NTPB 512
+#define NTPB 1024
 
 // Function that catches the error 
 void testCUDA(cudaError_t error, const char *file, int line)  {
@@ -36,7 +36,7 @@ __global__ void ShaGlobAtomic_kernel(float *A, float *B, float *C) {
 
     i = blockDim.x / 2;
     while(i != 0 ) {
-        if(threadIdx.x < 1) {
+        if(threadIdx.x < i) {
             SC[threadIdx.x] += SC[threadIdx.x + i];
         }
         __syncthreads();
@@ -69,20 +69,27 @@ int main(void) {
     cudaMalloc((void **)&d_b, length * size);
     cudaMalloc((void **)&d_c, size);
 
+
+    // printf("size: %d\n", size);
+    // printf("length dc %ld\n", sizeof(*a));
+    // printf("length dc %ld\n", sizeof(*d_c));
+    // printf("length db %ld\n", sizeof(d_b));
+
     // Copy inputs to device
-    testCUDA(cudaMemcpy(d_a, &a, length * size, cudaMemcpyHostToDevice));
-    testCUDA(cudaMemcpy(d_b, &b, length * size, cudaMemcpyHostToDevice));
+    cudaMemcpy(d_a, a, length * size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, length * size, cudaMemcpyHostToDevice);
 
     // Launch add() kernel on GPU
     Tim.start();						// CPU timer instructions
-    ShaGlobAtomic_kernel<<<NB, NTPB>>>(d_a, d_b, d_c);
+    ShaGlobAtomic_kernel<<<NB, NTPB>>>(d_a, d_b, d_c); // weird !!!!!!!!!!!!!!!!
+    // GlobAtomic_kernel<<<NB, NTPB>>>(d_a, d_b, d_c);
     Tim.add();							// CPU timer instructions
     // Copy result back to host
-    cudaMemcpy(&c, d_c, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, d_c, size, cudaMemcpyDeviceToHost);
 
     // Cleanup
     cudaFree(d_a); cudaFree(d_b); cudaFree(d_c);
-    printf("c=%f\n", *c);
+    printf("c = %f\n", *c);
     printf("CPU Timer for the The dot product: %f s\n", (float)Tim.getsum()); // CPU timer instructions
     return 0;
 }
