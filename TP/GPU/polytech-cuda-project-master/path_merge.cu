@@ -115,7 +115,7 @@ __global__ void mergeBig_k(int *A, int *B, int *M, int *A_idx, int *B_idx){
 				if (Q[Y] >= 0 && Q[X] <= sizeBshared && (Q[Y] == sizeAshared || Q[X] == 0 || A_shared[Q[Y]] > B_shared[Q[X]-1])) {
 					if (Q[X] == sizeBshared || Q[Y] == 0 || A_shared[Q[Y]-1] <= B_shared[Q[X]]) {
 						int idx = startA + startB + i + iter * blockDim.x;
-						if (Q[Y] < sizeAshared && (Q[X] == sizeBshared || A_shared[Q[Y]] <= B_shared[Q[X]]) ) {
+						if (Q[Y] < sizeAshared && (Q[X] == sizeBshared || A_shared[Q[Y]] <= B_shared[Q[X]])) {
 							M[idx] = A_shared[Q[Y]];
 							atomicAdd(&biaisA, 1);	// Biais à incrementer 
 						}

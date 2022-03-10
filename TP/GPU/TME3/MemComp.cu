@@ -60,7 +60,7 @@ float malloc_trans(int size, int NbT, bool flag) {
 	testCUDA(cudaEventDestroy(start));
 	testCUDA(cudaEventDestroy(stop));
 	testCUDA(cudaFree(aGPU));
-	free(a);	
+	free(a);
 	return TimeVar;
 }
 
