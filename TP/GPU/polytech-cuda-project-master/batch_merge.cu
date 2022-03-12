@@ -13,7 +13,7 @@ __global__ void mergeSmallBatch_k(int * A, int * sizeA, int *B, int *sizeB, int 
 
 	// Question 4 : Indices importantes
 	const int tidx = threadIdx.x % d;				// Numéro de la diagonal dans le tableau numéro Qt
-	const int Qt = (threadIdx.x - tidx) / d;			// Numéro du tableau par rapport au tableau shared
+	const int Qt = threadIdx.x / d;			// Numéro du tableau par rapport au tableau shared
 	const int gbx = Qt + blockIdx.x * (blockDim.x / d);		// Numéro du tableau par rapport au tableau global
 
 	const int sizeAi = sizeA[gbx];				// Taille du tableau considéré
