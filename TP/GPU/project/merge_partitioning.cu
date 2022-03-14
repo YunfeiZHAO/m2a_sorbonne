@@ -1,11 +1,11 @@
 #include <ctime>
 #include <stdio.h>
 
-#define NB 2000
+#define NB 500
 #define NTPB 1024
 
-#define len_A 200000
-#define len_B 100000
+#define len_A 1
+#define len_B 10000
 
 // Function that catches the error 
 void testCUDA(cudaError_t error, const char *file, int line){
@@ -23,6 +23,7 @@ __global__ void partition(int *a, int *b, int *A_part, int *B_part, int lengthA,
 
     // *** Ne pas oublier le cas len_A == leb_B == 1 
     // *** Ne pas oublier NB >= min(len_A, len_B) 
+
 	// A represents the biggest array
 	int *A, *B, *ap, *bp, la, lb, offset, i;
 	int Kx, Ky, Px, Py, Qx, Qy;
@@ -46,7 +47,10 @@ __global__ void partition(int *a, int *b, int *A_part, int *B_part, int lengthA,
     }
 
     int is_divisable = (len_A + len_B)%gridDim.x!=0;
-    i =((len_A + len_B)/gridDim.x+ is_divisable ) * blockIdx.x;
+    i = (len_A + len_B)/NB * (blockIdx.x);
+    int part_len =  (len_A + len_B)/NB * (NB + 1);
+    if(i > part_len-1)
+        return;
 
 	if(i> la){
 		Kx= i-la;
@@ -60,7 +64,6 @@ __global__ void partition(int *a, int *b, int *A_part, int *B_part, int lengthA,
 		Ky= i;
 		Px= i;
 		Py= 0;
-
 	}
 
 	while(true){
@@ -86,6 +89,7 @@ __global__ void partition(int *a, int *b, int *A_part, int *B_part, int lengthA,
 
 __global__ void merge(int *a, int *b, int *A_part, int *B_part, int *M, int lengthA, int lengthB){
 	// A represents the biggest array
+
 	int *A, *B, la, lb, offset, *ap, *bp;
     int Kx, Ky, Px, Py, Qx, Qy;
 
@@ -100,6 +104,11 @@ __global__ void merge(int *a, int *b, int *A_part, int *B_part, int *M, int leng
 
     start_x = ap[block];
     start_y = bp[block];
+
+    if(block ==0 ){
+        start_x = 0;
+        start_y = 0;
+    }
 
     if(block < NB-1){
         end_x = ap[block+1];
@@ -120,7 +129,6 @@ __global__ void merge(int *a, int *b, int *A_part, int *B_part, int *M, int leng
     if(i >= lengthA_c + lengthB_c){
 		return; 
 	}
-
 
 	if(lengthA_c > lengthB_c){
         for(int l = 0; l< lengthA_c; l++)
@@ -157,7 +165,6 @@ __global__ void merge(int *a, int *b, int *A_part, int *B_part, int *M, int leng
 		Ky= i;
 		Px= i;
 		Py= 0;
-
 	}
 
 	while(true){
@@ -182,7 +189,6 @@ __global__ void merge(int *a, int *b, int *A_part, int *B_part, int *M, int leng
 		}
 	}
 }
-
 
 void wrapper_partition(int *A, int *B, int *A_part, int *B_part, int *C) {
     int *aGPU, *bGPU, *a_partGPU, *b_partGPU, *cGPU;
@@ -236,19 +242,18 @@ int main(void){
     int *C = (int*)malloc((len_A + len_B) * sizeof(int));
 
     for(int i=0; i<len_A; i++){
-        A[i] = i*2;
-        //printf("%d %d\n", A[i], i);
+        A[i] = i;
 	}
     for(int i=0; i<len_B; i++){
         B[i] = i;
     }
     wrapper_partition(A, B, A_part, B_part, C);
     for(int i = 0; i < NB; i++){
-        printf("|%d: %d %d |\n",i, A_part[i], B_part[i]);
+        printf("|%d: %d %d | blah\n",i, A_part[i], B_part[i]);
     }
     printf("\n");
     for(int i = 0; i < len_A + len_B; i++){
-       printf("| %d |", C[i]);
+        printf("| %d |", C[i], i);
     }
 
     return 0;

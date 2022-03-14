@@ -182,7 +182,6 @@ int main() {
 			printf("B est le tableau de %d nombres IMPAIRS allant 1 à %d.\n", sizeBHost[i], bHost[d*i+sizeBHost[i]-1]);
 	}
 	
-C
 	free(aHost);
 	free(bHost);
 	free(mHost);
