@@ -48,14 +48,12 @@ __global__ void kernel_merge_small(int *a, int *b, int *M, int lengthA, int leng
 		Ky= la;
 		Px= la;
 		Py= i-la;
-	
 	}
 	else{
 		Kx= 0;
 		Ky= i;
 		Px= i;
 		Py= 0;
-
 	}
 	while(true){
 		offset = (Ky-Py)/2;
