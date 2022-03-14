@@ -42,8 +42,7 @@ __global__ void mergeSmallBatch_k(int * A, int * sizeA, int *B, int *sizeB, int 
 		K[Y] = sizeAi;
 		P[X] = sizeAi;
 		P[Y] = tidx - sizeAi;
-	}
-	else {
+	} else {
 		K[X] = 0;
 		K[Y] = tidx;
 		P[X] = tidx;
@@ -183,8 +182,7 @@ int main() {
 			printf("B est le tableau de %d nombres IMPAIRS allant 1 à %d.\n", sizeBHost[i], bHost[d*i+sizeBHost[i]-1]);
 	}
 	
-
-	// Liberer la mémoire
+C
 	free(aHost);
 	free(bHost);
 	free(mHost);
@@ -215,6 +213,6 @@ bool isSumOfLengthEqualtoD(int *A, int *B, int N, int d){
 // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
 bool isPowerOfTwo(int x)
 {
-	    return (x != 0) && ((x & (x - 1)) == 0);
+	return (x != 0) && ((x & (x - 1)) == 0);
 }
 
