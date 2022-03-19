@@ -1,11 +1,11 @@
 #include <ctime>
 #include <stdio.h>
 
-#define NB 500
+#define NB 400
 #define NTPB 1024
 
-#define len_A 1
-#define len_B 10000
+#define len_A 25600
+#define len_B 25600
 
 // Function that catches the error 
 void testCUDA(cudaError_t error, const char *file, int line){
@@ -212,17 +212,29 @@ void wrapper_partition(int *A, int *B, int *A_part, int *B_part, int *C) {
 
     //start of kernel
     partition<<<NB, 1>>>(aGPU, bGPU, a_partGPU, b_partGPU, len_A, len_B);
-    merge<<<NB, NTPB>>>(aGPU, bGPU, a_partGPU, b_partGPU, cGPU, len_A, len_B);
 
-    testCUDA(cudaMemcpy(C, cGPU, (len_A + len_B)*sizeof(int), cudaMemcpyDeviceToHost));
-    testCUDA(cudaMemcpy(A_part, a_partGPU, (NB)*sizeof(int), cudaMemcpyDeviceToHost));
-    testCUDA(cudaMemcpy(B_part, b_partGPU, (NB)*sizeof(int), cudaMemcpyDeviceToHost));
 
     testCUDA(cudaEventRecord(stop, 0));
     testCUDA(cudaEventSynchronize(stop));
     testCUDA(cudaEventElapsedTime(&TimerV, start, stop));
 
-    printf("Execution time: %f ms\n", TimerV);
+    printf("Execution time partition: %f ms\n", TimerV);
+
+
+
+
+    testCUDA(cudaEventRecord(start, 0));
+    merge<<<NB, NTPB>>>(aGPU, bGPU, a_partGPU, b_partGPU, cGPU, len_A, len_B);
+    testCUDA(cudaEventRecord(stop, 0));
+    testCUDA(cudaEventSynchronize(stop));
+    testCUDA(cudaEventElapsedTime(&TimerV, start, stop));
+    printf("Execution time merge: %f ms\n", TimerV);
+
+
+    testCUDA(cudaMemcpy(C, cGPU, (len_A + len_B)*sizeof(int), cudaMemcpyDeviceToHost));
+    testCUDA(cudaMemcpy(A_part, a_partGPU, (NB)*sizeof(int), cudaMemcpyDeviceToHost));
+    testCUDA(cudaMemcpy(B_part, b_partGPU, (NB)*sizeof(int), cudaMemcpyDeviceToHost));
+
 
     testCUDA(cudaFree(aGPU));
     testCUDA(cudaFree(bGPU));
@@ -248,13 +260,13 @@ int main(void){
         B[i] = i;
     }
     wrapper_partition(A, B, A_part, B_part, C);
-    for(int i = 0; i < NB; i++){
-        printf("|%d: %d %d | blah\n",i, A_part[i], B_part[i]);
-    }
-    printf("\n");
-    for(int i = 0; i < len_A + len_B; i++){
-        printf("| %d |", C[i], i);
-    }
+    // for(int i = 0; i < NB; i++){
+    //     printf("|%d: %d %d | blah\n",i, A_part[i], B_part[i]);
+    // }
+    // printf("\n");
+    // for(int i = 0; i < len_A + len_B; i++){
+    //     printf("| %d |", C[i]);
+    // }
 
     return 0;
 }

@@ -5,7 +5,7 @@
 #include <cuda.h>
 
 #define NTPB 1024
-#define lenC 2050
+#define lenC 4096
 
 // Function that catches the error 
 void testCUDA(cudaError_t error, const char *file, int line){
@@ -214,33 +214,33 @@ __global__ void merge_by_partition(int *C, int *A_part, int *B_part, int d, int 
 	}
 }
 
-// void wrapper_partitioning_merge(int *C, int d, int len_new, int NB){
-//     int *a_partGPU, *b_partGPU;
-//     int NBPB = d/NTPB; //number of bloc per batch
-//     int N_batch = len_new / d; //number of batch
+void wrapper_partitioning_merge(int *C, int d, int len_new, int NB){
+    int *a_partGPU, *b_partGPU;
+    int NBPB = d/NTPB; //number of bloc per batch
+    int N_batch = len_new / d; //number of batch
 
-//     int *A_part = (int*)malloc(NBPB * N_batch * sizeof(int));
-//     int *B_part = (int*)malloc(NBPB * N_batch * sizeof(int));
+    int *A_part = (int*)malloc(NBPB * N_batch * sizeof(int));
+    int *B_part = (int*)malloc(NBPB * N_batch * sizeof(int));
 
-//     cudaMalloc(&a_partGPU, NBPB * N_batch * sizeof(int));
-//     cudaMalloc(&b_partGPU, NBPB * N_batch * sizeof(int));
-//     partition<<<NBPB * N_batch, 1>>>(C, a_partGPU, b_partGPU, N_batch, d, NBPB);
-//     testCUDA(cudaMemcpy(A_part, a_partGPU, NBPB * N_batch*sizeof(int), cudaMemcpyDeviceToHost));
-//     testCUDA(cudaMemcpy(B_part, b_partGPU, NBPB * N_batch*sizeof(int), cudaMemcpyDeviceToHost));
+    cudaMalloc(&a_partGPU, NBPB * N_batch * sizeof(int));
+    cudaMalloc(&b_partGPU, NBPB * N_batch * sizeof(int));
+    partition<<<NBPB * N_batch, 1>>>(C, a_partGPU, b_partGPU, N_batch, d, NBPB);
+    testCUDA(cudaMemcpy(A_part, a_partGPU, NBPB * N_batch*sizeof(int), cudaMemcpyDeviceToHost));
+    testCUDA(cudaMemcpy(B_part, b_partGPU, NBPB * N_batch*sizeof(int), cudaMemcpyDeviceToHost));
 
-//     printf("partition A\n");
-//     for(int i = 0; i < NBPB * N_batch; i++){
-//         printf("| %d |", A_part[i]);
-//     }
-//     printf("\n\n");
-//     printf("partition B\n");
-//     for(int i = 0; i < NBPB * N_batch ; i++){
-//         printf("| %d |", B_part[i]);
-//     }
-//     printf("\n\n");
+    printf("partition A\n");
+    for(int i = 0; i < NBPB * N_batch; i++){
+        printf("| %d |", A_part[i]);
+    }
+    printf("\n\n");
+    printf("partition B\n");
+    for(int i = 0; i < NBPB * N_batch ; i++){
+        printf("| %d |", B_part[i]);
+    }
+    printf("\n\n");
 
-//     merge_by_partition<<<NB, NTPB>>>(C, a_partGPU, b_partGPU, d, NBPB, NB);
-// }
+    merge_by_partition<<<NB, NTPB>>>(C, a_partGPU, b_partGPU, d, NBPB, NB);
+}
 
 void wrapper_merge_order(int *C, int p, int len_new, int NB){
     int *cGPU;
@@ -253,34 +253,12 @@ void wrapper_merge_order(int *C, int p, int len_new, int NB){
     testCUDA(cudaMalloc(&cGPU, len_new*sizeof(int)));   
     testCUDA(cudaMemcpy(cGPU, C, len_new*sizeof(int), cudaMemcpyHostToDevice));
 
-    /*For partitioning*/
-    int *a_partGPU, *b_partGPU;
-    int *A_part = (int*)malloc(NB * sizeof(int));
-    int *B_part = (int*)malloc(NB * sizeof(int));
-    cudaMalloc(&a_partGPU, NB * sizeof(int));
-    cudaMalloc(&b_partGPU, NB * sizeof(int));
-
     for(int l = 1; l<=p; l++){ 
         int d = pow(2,l);
         if(d <= NTPB){
             merge<<<NB, NTPB >>>(cGPU, d, len_new);
         }else{
-            int NBPB = d/NTPB; //number of bloc per batch
-            int N_batch = len_new / d; //number of batch
-            partition<<<NB, 1>>>(C, a_partGPU, b_partGPU, N_batch, d, NBPB);
-            testCUDA(cudaMemcpy(A_part, a_partGPU, NB*sizeof(int), cudaMemcpyDeviceToHost));
-            testCUDA(cudaMemcpy(B_part, b_partGPU, NB*sizeof(int), cudaMemcpyDeviceToHost));
-            printf("partition A\n");
-            for(int i = 0; i < NBPB * N_batch; i++){
-                printf("| %d |", A_part[i]);
-            }
-            printf("\n\n");
-            printf("partition B\n");
-            for(int i = 0; i < NBPB * N_batch ; i++){
-                printf("| %d |", B_part[i]);
-            }
-            printf("\n\n");
-            // merge_by_partition<<<NB, NTPB>>>(C, a_partGPU, b_partGPU, d, NBPB, NB);
+            wrapper_partitioning_merge(cGPU, d, len_new, NB);
         }
     }
 
