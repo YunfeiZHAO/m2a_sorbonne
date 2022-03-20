@@ -1,0 +1,38 @@
+network "Diabetes Remission" {
+// written by aGrUM 0.22.8
+}
+
+variable Glycemia {
+   type discrete[2] {0, 1};
+}
+
+variable Insulin {
+   type discrete[2] {0, 1};
+}
+
+variable Other_drugs {
+   type discrete[2] {0, 1};
+}
+
+variable Remission {
+   type discrete[2] {0, 1};
+}
+
+probability (Glycemia) {
+   default 0 0;
+}
+probability (Insulin | Glycemia) {
+   (0) 0 0;
+   (1) 0 0;
+}
+probability (Other_drugs | Glycemia) {
+   (0) 0 0;
+   (1) 0 0;
+}
+probability (Remission | Other_drugs, Insulin) {
+   (0, 0) 0 0;
+   (1, 0) 0 0;
+   (0, 1) 0 0;
+   (1, 1) 0 0;
+}
+
